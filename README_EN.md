@@ -138,6 +138,10 @@ lib/x64/libop.lib               lib/x86/libop.lib
 lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
+> The table above is Release. Debug outputs are isolated under
+> `bin/{x64|x86}/Debug/` and `lib/{x64|x86}/Debug/` so same-name Debug/Release
+> artifacts cannot overwrite each other; Twinkle only consumes Release.
+
 x86 dependencies: `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`. Both Release and Debug
 build: Debug also uses `/MT` to match the Release OpenCV/gtest/BlackBone CRT, so
 `cv::debug_build_guard` is not triggered; the tradeoff is no `_DEBUG`/iterator debugging.

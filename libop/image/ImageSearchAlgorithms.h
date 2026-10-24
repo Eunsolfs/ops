@@ -9,6 +9,7 @@
 #include "../image/Color.h"
 #include "../image/Image.h"
 #include "../base/ThreadPool.h"
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -25,11 +26,42 @@ inline int HEX2INT(wchar_t c) {
 }
 
 using img_names = std::vector<std::wstring>;
+
+// 64 位积分图。原实现用 4B/px 的 Image 存 int32 和：
+// 4K 灰度总和已接近 INT_MAX（2.115e9），5K/双 4K 必回绕。
+struct ImageSum {
+    int width = 0;
+    int height = 0;
+    std::vector<long long> pixels;
+
+    void create(int w, int h) {
+        width = w;
+        height = h;
+        pixels.assign(static_cast<size_t>(w) * static_cast<size_t>(h), 0);
+    }
+    void clear() {
+        width = height = 0;
+        pixels.clear();
+    }
+    void fill(long long value) {
+        std::fill(pixels.begin(), pixels.end(), value);
+    }
+    bool empty() const {
+        return width <= 0 || height <= 0;
+    }
+    long long &at(int y, int x) {
+        return pixels[static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)];
+    }
+    const long long &at(int y, int x) const {
+        return pixels[static_cast<size_t>(y) * static_cast<size_t>(width) + static_cast<size_t>(x)];
+    }
+};
+
 struct PicMatchTemplate {
     // image 由缓存层持有，这里只保存匹配阶段需要的视图和派生数据。
     Image *image = nullptr;
     int transparent_count = 0;
-    int gray_norm = 0;
+    long long gray_norm = 0;
     ImageBin gray;
     vector<uint> transparent_points;
 };
@@ -43,8 +75,8 @@ void build_pic_match_template(Image &img, PicMatchTemplate &match);
 // 生成 KMP 的 next 表
 void gen_next(const Image &img, vector<int> &next);
 // 像素值求和
-int inline sum(uchar *begin, uchar *end) {
-    int s = 0;
+long long inline sum(uchar *begin, uchar *end) {
+    long long s = 0;
     while (begin != end)
         s += *begin++;
     return s;
@@ -128,18 +160,18 @@ class ImageSearchAlgorithms {
     long FindStrEx(const std::vector<ocr_rec_t> &ps, const vector<wstring> &vstr, std::wstring &out_str);
     // 描述：查找目标图像中的直线
     // 输出：outStr:直线描述[法线角度，直线到原点的距离];ret:该直线上的点的数量
-    long FindLine(std::wstring &outStr);
+    long long FindLine(std::wstring &outStr);
 
   private:
     // 透明图匹配
     template <bool nodfcolor>
     long trans_match(long x, long y, Image *timg, color_t dfcolor, const vector<uint> &points, int max_error);
     // 灰度匹配
-    long real_match(long x, long y, ImageBin *timg, int tnorm, double sim);
+    long real_match(long x, long y, ImageBin *timg, long long tnorm, double sim);
     // 记录和
     void record_sum(const ImageBin &gray);
     //[x1,x2),[y1,y2)
-    int region_sum(int x1, int y1, int x2, int y2);
+    long long region_sum(int x1, int y1, int x2, int y2);
 
     int get_bk_color(inputbin bin);
 
@@ -156,7 +188,7 @@ class ImageSearchAlgorithms {
     Image _src;
     ImageBin _gray;
     ImageBin _binary;
-    Image _sum;
+    ImageSum _sum;
     // 起始点
     int _x1, _y1;
     // 偏移

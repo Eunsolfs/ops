@@ -28,7 +28,7 @@ using namespace ATL;
 class ATL_NO_VTABLE OpAutomation
     : public CComObjectRootEx<CComSingleThreadModel>,
       public CComCoClass<OpAutomation, &CLSID_OpAutomation>,
-      public IDispatchImpl<IOpAutomation, &IID_IOpAutomation, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/0> {
+      public IDispatchImpl<IOpAutomation, &IID_IOpAutomation, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1> {
   public:
     OpAutomation();
 
@@ -53,6 +53,11 @@ class ATL_NO_VTABLE OpAutomation
 
   public:
     //---------------基本设置/属性-------------------
+
+    // 所有 late-binding / IDispatch 调用统一在这里兜底：底层 Image/regex 仍可能
+    // 抛出异常，异常穿过 COM/静态 CRT 边界是 UB，必须转成 E_FAIL。
+    STDMETHOD(Invoke)(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams,
+                      VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr) override;
 
     // 1.版本号Version
     STDMETHOD(Ver)(BSTR *ret);

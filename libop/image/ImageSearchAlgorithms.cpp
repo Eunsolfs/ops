@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <numeric>
 #include <queue>
 
@@ -1049,7 +1050,7 @@ _quick_return:
     return find_ct;
 }
 
-long ImageSearchAlgorithms::FindLine(std::wstring &outStr) {
+long long ImageSearchAlgorithms::FindLine(std::wstring &outStr) {
     outStr.clear();
     if (_binary.empty())
         return 0; // 无二值图 = 无直线；不要输出伪造的 "0,0"
@@ -1071,19 +1072,19 @@ long ImageSearchAlgorithms::FindLine(std::wstring &outStr) {
                     int d = static_cast<int>(j * cos_table[t] + i * sin_table[t]);
                     assert(d <= h);
                     if (d >= 0)
-                        _sum.at<int>(d, t)++;
+                        _sum.at(d, t)++;
                 }
             }
         }
     }
     int maxRow = 0, maxCol = 0;
-    int maxval = -1;
+    long long maxval = -1;
     for (int i = 0; i < _sum.height; i++) {
         for (int j = 0; j < _sum.width; j++) {
-            if (_sum.at<int>(i, j) > maxval) {
+            if (_sum.at(i, j) > maxval) {
                 maxRow = i;
                 maxCol = j;
-                maxval = _sum.at<int>(i, j);
+                maxval = _sum.at(i, j);
             }
         }
     }
@@ -1128,12 +1129,13 @@ long ImageSearchAlgorithms::trans_match(long x, long y, Image *timg, color_t dfc
     return 1;
 }
 
-long ImageSearchAlgorithms::real_match(long x, long y, ImageBin *timg, int tnorm, double sim) {
+long ImageSearchAlgorithms::real_match(long x, long y, ImageBin *timg, long long tnorm, double sim) {
     // quick check
-    if ((double)abs(tnorm - region_sum(x, y, x + timg->width, y + timg->height)) > (double)tnorm * (1.0 - sim))
+    if (static_cast<double>(std::llabs(tnorm - region_sum(x, y, x + timg->width, y + timg->height))) >
+        static_cast<double>(tnorm) * (1.0 - sim))
         return 0;
-    int err = 0;
-    int maxErr = static_cast<int>((1.0 - sim) * tnorm);
+    long long err = 0;
+    const long long maxErr = static_cast<long long>((1.0 - sim) * tnorm);
     for (int i = 0; i < timg->height; i++) {
         auto ptr = _gray.ptr(y + i) + x;
         auto ptr2 = timg->ptr(i);
@@ -1157,21 +1159,21 @@ void ImageSearchAlgorithms::record_sum(const ImageBin &gray) {
     int n = _sum.width;
     for (int i = 1; i < m; i++) {
         for (int j = 1; j < n; j++) {
-            int s = 0;
+            long long s = 0;
 
-            s += _sum.at<int>(i - 1, j);
+            s += _sum.at(i - 1, j);
 
-            s += _sum.at<int>(i, j - 1);
+            s += _sum.at(i, j - 1);
 
-            s -= _sum.at<int>(i - 1, j - 1);
-            s += (int)gray.at(i - 1, j - 1);
-            _sum.at<int>(i, j) = s;
+            s -= _sum.at(i - 1, j - 1);
+            s += (long long)gray.at(i - 1, j - 1);
+            _sum.at(i, j) = s;
         }
     }
 }
 
-int ImageSearchAlgorithms::region_sum(int x1, int y1, int x2, int y2) {
-    int ans = _sum.at<int>(y2, x2) - _sum.at<int>(y2, x1) - _sum.at<int>(y1, x2) + _sum.at<int>(y1, x1);
+long long ImageSearchAlgorithms::region_sum(int x1, int y1, int x2, int y2) {
+    long long ans = _sum.at(y2, x2) - _sum.at(y2, x1) - _sum.at(y1, x2) + _sum.at(y1, x1);
     return ans;
 }
 

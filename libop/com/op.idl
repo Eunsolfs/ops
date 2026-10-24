@@ -25,7 +25,7 @@ import "ocidl.idl";
 
 [
 	object,
-	uuid(85f31925-b7ce-4e26-918e-082893bde6ff),
+	uuid(59d588f8-b39e-4427-9826-c1fba566318d),
 	dual,
 	nonextensible,
 	pointer_default(unique)
@@ -241,7 +241,7 @@ interface IOpAutomation : IDispatch
 };
 [
 	uuid(40297cce-e4de-4d31-acfb-81bb8d14d261),
-	version(1.0),
+	version(1.1),
 	custom(a817e7a1-43fa-11d0-9e44-00aa00b6770a, "{54ca0535-fb49-4d91-8709-786fb8725132}")
 ]
 library opLib

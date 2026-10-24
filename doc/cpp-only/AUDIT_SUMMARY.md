@@ -13,7 +13,7 @@
 ## 1. 结论
 
 - Release / Debug × x64 / Win32 **四个配置均 0 警告 / 0 错误**。
-- `op_test` 132 cases；x64 核心集 9/9 PASS，x86 核心集 8 PASS + 1 SKIP（32 位专用跳过）。
+- `op_test` 132 cases；x64 核心集 10/10 PASS，x86 核心集 8/8 PASS（含 x86 C API 别名与 COM IID 测试）。
 - `cpp_call.exe`：`Ver = 0.4.8.3`、`OpenCV = 5.0.0`。
 - 已修复 2 个 P0、4 个 P1、5 个 P2；剩余项主要是兼容性决策、性能/测试缺口和跨仓库集成。
 
@@ -36,15 +36,22 @@
 | P2-D | P2 | OCR 测试默认探测 tesseract:8080，但代码默认 paddle_ncnn:8082 | [test_support.cpp](../tests/test_support.cpp) 与 [doc/ocr.md](doc/ocr.md) 对齐 8082 |
 | P2-A | P2 | 文档把被删 API 写成 28 个/导出 198/213；Debug 限制过时 | 文档改为 27、200/215，并更新 Debug/PostBuild/x86 说明 |
 
+## 2.1 本轮追加优化（2026-10-25 07:00）
+
+- **COM 早期绑定**：`IOpAutomation` IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`，typelib `1.1`，
+  `IDispatchImpl` 1,1；旧 early-binding 客户端 QI 旧 IID 时干净失败，late binding 不受影响。
+- **x86 GetProcAddress**：新增 [op_c_api_x86.def](../libop/c_api/op_c_api_x86.def)，同时导出
+  `_OpXxx@N` 与 `OpXxx` 别名；x86 共 400 个导出。`UtilsTest.X86CapiUndecoratedAliases` 已验证。
+- **OCR 并发**：配置锁只保护 endpoint/timeout 快照，HTTP 放锁外；最多 4 个在途请求，
+  不再因单次后端卡死阻塞 `SetOcrEngine`/全进程 OCR。
+- **积分图**：`_sum` 从 `Image`(int32) 改为 `ImageSum`(int64)，`region_sum`/`gray_norm`/
+  `real_match`/`FindLine` 全部 64 位；5K/双 4K 不再回绕。
+- **COM 异常边界**：`OpAutomation::Invoke` 统一 `try/catch(...) -> E_FAIL`，覆盖 late-binding 调用。
+
 ## 3. 仍建议处理（未改代码）
 
 | 优先级 | 问题 | 建议 |
 | --- | --- | --- |
-| 高 | **COM 早期绑定 vtable 断裂**：`op.idl` 是 `dual`，中段删除 27 个方法但 IID/version 未升；旧 `#import`/VB6 early-binding 客户端可能静默跳到错误方法 | 升 IID/typelib 版本或新增 `IOpAutomation2`；至少要求客户端重新导入 typelib。已在 API_CHANGES 写明 |
-| 高 | **x86 C API 导出名带 stdcall 修饰**（`_OpOcr@32`） | 隐式链接用 `.lib`；`GetProcAddress` 用修饰名或加 `.def` 别名；已在 API_CHANGES 写明 |
-| 中 | OCR 全局 mutex 覆盖 HTTP 往返；后端假死时全进程 OCR 串行/长阻塞 | 锁只保护 endpoint/timeout 快照，HTTP 放锁外；加失败熔断 |
-| 中 | 灰度积分图 `int32` 溢出（5K/双 4K FindPic） | 改 `int64` 积分图或分块积分图；先加尺寸守卫 |
-| 中 | COM 层零 `try/catch`，异常跨 `IDispatch` 边界 | 统一给 COM 方法包 `try/catch(...) -> E_FAIL` |
 | 中 | `check_bind()` 未绑定时隐式绑定桌面窗口 | 改成显式 `SetDisplayInput(screen)`；至少不写回 `_isBind` |
 | 中 | HTTP OCR 正则解析脆弱（嵌套对象、code 误匹配、响应无上限） | 用 JSON parser；限制响应体大小 |
 | 中 | `FindPic` 多次全帧遍历、GDI 每次重建 DC/位图、无 frameId 缓存 | 引入 frameId/缓存与复用缓冲 |
@@ -61,8 +68,9 @@
 - OCR 结果顺序/同坐标框/失败语义（需要可注入的 HTTP stub 或把解析抽成纯函数）。
 - COM 注册/调用（`op_i.c` 已编译但无一条 COM 用例）。
 - DPI 开关（目前只有文档里的临时 probe）。
-- 5K 合成图积分图算术。
+- 5K 合成图积分图算术（已在 `ImageSum` int64 中修复实现，仍建议补大图测试）。
 - OCR 测试中 `OcrEx/FindStr/FindStrEx` 只打印无断言，建议补断言；无服务时 15 个 OCR 用例全部 SKIP，CI 等于零覆盖。
+- x86 C API 别名已有 `UtilsTest.X86CapiUndecoratedAliases` 覆盖（`_OpCreate@0` 与 `OpCreate` 都可用）。
 
 ## 5. 复核命令
 
@@ -75,9 +83,13 @@ cd Y:\sourcecode\cpp\Twinkle\external\ops
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' op.sln /t:Rebuild /p:Configuration=Debug /p:Platform=x64 /m
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' op.sln /t:Rebuild /p:Configuration=Debug /p:Platform=Win32 /m
 
-# 核心测试
+# 核心测试（Release）
 .\bin\x64\op_test.exe --gtest_filter="UtilsTest.*:HandleCompatTest.*:AlgorithmTest.*"
 .\bin\x86\op_test.exe --gtest_filter="UtilsTest.*:AlgorithmTest.*"
+
+# Debug 在独立目录运行
+.\bin\x64\Debug\op_test.exe --gtest_filter="UtilsTest.*:HandleCompatTest.*:AlgorithmTest.*"
+.\bin\x86\Debug\op_test.exe --gtest_filter="UtilsTest.*:AlgorithmTest.*"
 ```
 
 > 若不想让 Release 构建写 Twinkle 的 `modules\Twinkle.Background\lib` / `external\OP\op-include`，

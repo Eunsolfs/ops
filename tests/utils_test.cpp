@@ -2,6 +2,7 @@
 
 #include "../libop/base/ThreadPool.h"
 #include "../libop/base/Utils.h"
+#include "op_i.h"
 
 #include <map>
 #include <vector>
@@ -33,6 +34,45 @@ TEST(UtilsTest, PointStrictWeakOrder) {
     points[c] = 3;
     EXPECT_EQ(points.size(), 3u);
 }
+
+#ifdef _M_IX86
+TEST(UtilsTest, X86CapiUndecoratedAliases) {
+    // x86 __stdcall 导出名是 _OpCreate@0；.def 仍保留它，并加 OpCreate 别名，
+    // 让 GetProcAddress 的两种写法都能工作。
+    HMODULE module = ::LoadLibraryW(L"op_c_api_x86.dll");
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(::GetProcAddress(module, "OpCreate"), nullptr);
+    EXPECT_NE(::GetProcAddress(module, "OpOcr"), nullptr);
+    EXPECT_NE(::GetProcAddress(module, "_OpCreate@0"), nullptr);
+    ::FreeLibrary(module);
+}
+#else
+TEST(UtilsTest, ComIidBumpedForEarlyBinding) {
+    // 早期绑定客户端必须因旧 IID 得到 E_NOINTERFACE，而不是静默跳错 vtable。
+    const GUID old_iid = {0x85f31925, 0xb7ce, 0x4e26, {0x91, 0x8e, 0x08, 0x28, 0x93, 0xbd, 0xe6, 0xff}};
+    HMODULE module = ::LoadLibraryW(L"op_x64.dll");
+    ASSERT_NE(module, nullptr);
+    using GetClassObjectFn = HRESULT(STDAPICALLTYPE *)(REFCLSID, REFIID, LPVOID *);
+    auto get_class_object = reinterpret_cast<GetClassObjectFn>(::GetProcAddress(module, "DllGetClassObject"));
+    ASSERT_NE(get_class_object, nullptr);
+
+    IClassFactory *factory = nullptr;
+    ASSERT_TRUE(SUCCEEDED(get_class_object(CLSID_OpAutomation, IID_IClassFactory,
+                                           reinterpret_cast<LPVOID *>(&factory))));
+    ASSERT_NE(factory, nullptr);
+
+    IUnknown *current = nullptr;
+    EXPECT_TRUE(SUCCEEDED(factory->CreateInstance(nullptr, IID_IOpAutomation,
+                                                  reinterpret_cast<LPVOID *>(&current))));
+    IUnknown *legacy = nullptr;
+    EXPECT_EQ(factory->CreateInstance(nullptr, old_iid, reinterpret_cast<LPVOID *>(&legacy)), E_NOINTERFACE);
+    EXPECT_EQ(legacy, nullptr);
+    if (current)
+        current->Release();
+    factory->Release();
+    ::FreeLibrary(module);
+}
+#endif
 
 TEST(UtilsTest, RectDivideBlock) {
     op::rect_t rc(0, 0, 100, 100);

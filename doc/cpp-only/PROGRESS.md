@@ -284,6 +284,25 @@ OpenCV   = 5.0.0
     HTTP 正则/响应上限、FindPic 多份拷贝等性能/健壮性项。
   - 测试缺口：FindLine、COM、GDI resize、绑定失败后输入、DPI、5K 积分图。
 
+### 07:00 COM/OCR/积分图/异常边界优化
+
+- COM 兼容：`IOpAutomation` IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`，typelib 升到 `1.1`，
+  `IDispatchImpl` 同步 1,1。旧 early-binding 客户端 QI 旧 IID 会干净失败；late binding 按
+  CLSID+dispid 仍可用。
+- x86 C API：新增 `libop/c_api/op_c_api_x86.def`，保留 `_OpXxx@N` 并加 `OpXxx` 别名；
+  x86 导出 400 个（200 修饰 + 200 别名），`GetProcAddress` 两种写法都可用。
+- OCR：配置锁只保护 endpoint/timeout 快照，HTTP 在锁外；最多 4 个在途请求，避免单次后端
+  卡死阻塞全进程 OCR/SetOcrEngine。
+- 积分图：`_sum` 从 int32 `Image` 改为 int64 `ImageSum`；`region_sum`/`gray_norm`/`real_match`/
+  `FindLine` 全 64 位，修 5K/双 4K 溢出。
+- COM 异常：`OpAutomation::Invoke` 统一 `try/catch(...) -> E_FAIL`，覆盖 late-binding。
+- 验证：四配置 `/t:Rebuild` 均 0 警告/0 错误；x64 核心 10/10 PASS，x86 核心 8/8 PASS
+  （含 `UtilsTest.X86CapiUndecoratedAliases` 与 `UtilsTest.ComIidBumpedForEarlyBinding`）。
+- 输出隔离：Debug 产物改到 `bin/{x64|x86}/Debug/`、`lib/{x64|x86}/Debug/`，避免与 Release
+  同名 DLL/LIB 互相覆盖；Twinkle 仍只使用 Release。
+- 遗留：`check_bind` 隐式桌面绑定、HTTP JSON/响应上限、FindPic/frameId 性能、`Delay` 忙等、
+  DPI 实际状态、C API 线程安全/返回值生命周期文档、大图积分图测试、COM 注册用例。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
@@ -301,5 +320,9 @@ OpenCV   = 5.0.0
 - [x] Twinkle.sln 加入 OP 工程与构建依赖
 - [x] 提交 tests/x86/Twinkle.sln 变更（Lead）
 - [x] 削减后功能审计 + P0/P1 修复（提交 `188cfae`）
-- [ ] COM 早期绑定兼容策略（升 IID / IOpAutomation2）
-- [ ] OCR HTTP 串行化与积分图 int32 溢出
+- [x] COM 早期绑定兼容（IID/typelib 1.1）
+- [x] x86 C API `GetProcAddress` 别名
+- [x] OCR HTTP 串行化改造（4 并发槽）
+- [x] 积分图 int32 → int64
+- [x] COM `Invoke` 统一 try/catch
+- [ ] `check_bind` 隐式桌面绑定、HTTP JSON/响应上限、FindPic/frameId 性能

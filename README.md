@@ -140,6 +140,9 @@ lib/x64/libop.lib               lib/x86/libop.lib
 lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
+> 上表是 Release 产物。Debug 为隔离输出：`bin/{x64|x86}/Debug/`、`lib/{x64|x86}/Debug/`，
+> 避免同名 Debug/Release DLL/LIB 互相覆盖；Twinkle 只使用 Release 路径。
+
 x86 依赖用 `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86` 准备。Release / Debug 均可构建：
 Debug 也使用 `/MT`（与 Release 版 OpenCV/gtest/BlackBone 的 CRT 一致），因此不会触发
 `cv::debug_build_guard`；代价是 Debug 不含 `_DEBUG`/迭代器调试。需要真正的 Debug CRT 时，

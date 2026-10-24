@@ -68,8 +68,22 @@ HttpOcrService *HttpOcrService::getInstance() {
     return &sOcrEngine;
 }
 
+HttpOcrService::SlotGuard::SlotGuard(HttpOcrService *owner) : m_owner(owner) {
+    std::unique_lock<std::mutex> lock(m_owner->m_slot_mutex);
+    m_owner->m_slot_cv.wait(lock, [this] { return m_owner->m_in_flight < kMaxConcurrentOcr; });
+    ++m_owner->m_in_flight;
+}
+
+HttpOcrService::SlotGuard::~SlotGuard() {
+    {
+        std::lock_guard<std::mutex> lock(m_owner->m_slot_mutex);
+        --m_owner->m_in_flight;
+    }
+    m_owner->m_slot_cv.notify_one();
+}
+
 int HttpOcrService::init(const std::wstring &engine, const std::wstring &dllName, const vector<string> &argvs) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_config_mutex);
 
     // Resolve fallback endpoint/timeout if not yet set
     if (m_endpoint.empty() || m_timeout_ms <= 0) {
@@ -85,12 +99,11 @@ int HttpOcrService::init(const std::wstring &engine, const std::wstring &dllName
 }
 
 int HttpOcrService::release() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<std::mutex> lock(m_config_mutex);
     return 0;
 }
 
 int HttpOcrService::ocr(byte *data, int w, int h, int bpp, vocr_rec_t &result) {
-    const std::lock_guard<std::mutex> lock(m_mutex);
     result.clear();
 
     if (data == nullptr || w <= 0 || h <= 0 || (bpp != 1 && bpp != 3 && bpp != 4)) {
@@ -100,6 +113,19 @@ int HttpOcrService::ocr(byte *data, int w, int h, int bpp, vocr_rec_t &result) {
     const size_t pixel_bytes_size_t = static_cast<size_t>(w) * static_cast<size_t>(h) * static_cast<size_t>(bpp);
     if (pixel_bytes_size_t > 64 * 1024 * 1024) {
         return -2;
+    }
+
+    // 只拷贝配置快照；HTTP 请求不持锁，允许多个 Op/线程并行 OCR。
+    std::string endpoint;
+    int timeout_ms = 0;
+    {
+        std::lock_guard<std::mutex> lock(m_config_mutex);
+        if (m_endpoint.empty() || m_timeout_ms <= 0) {
+            m_endpoint = resolve_default_endpoint();
+            m_timeout_ms = resolve_default_timeout_ms();
+        }
+        endpoint = m_endpoint;
+        timeout_ms = m_timeout_ms;
     }
 
     std::string image_b64;
@@ -112,15 +138,18 @@ int HttpOcrService::ocr(byte *data, int w, int h, int bpp, vocr_rec_t &result) {
                       ",\"height\":" + std::to_string(h) + ",\"bpp\":" + std::to_string(bpp) + "}";
 
     ParsedUrl parsed;
-    if (!parse_url(m_endpoint, parsed)) {
-        cout << "ocr endpoint invalid: " << m_endpoint << endl;
+    if (!parse_url(endpoint, parsed)) {
+        cout << "ocr endpoint invalid: " << endpoint << endl;
         return -4;
     }
 
+    // 网络请求才占并发槽；base64/参数校验不占。
+    SlotGuard slot(this);
+
     std::string resp;
     DWORD status_code = 0;
-    if (!http_post_json(parsed, req, m_timeout_ms, resp, status_code, L"op-ocr-client/1.0")) {
-        cout << "ocr request failed: endpoint=" << m_endpoint << endl;
+    if (!http_post_json(parsed, req, timeout_ms, resp, status_code, L"op-ocr-client/1.0")) {
+        cout << "ocr request failed: endpoint=" << endpoint << endl;
         return -5;
     }
     if (status_code != 200) {

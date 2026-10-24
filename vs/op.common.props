@@ -11,8 +11,12 @@
   <Import Project="$(MSBuildThisFileDirectory)op.deps.props" />
 
   <PropertyGroup Label="OpDirs">
-    <OpOutDirBin>$(OpBinDir)</OpOutDirBin>
-    <OpOutDirLib>$(OpLibDir)</OpOutDirLib>
+    <!-- Debug 与 Release 分开输出，避免同名 op_x64/libop.lib 互相覆盖：
+         Debug 的 bin/x64/Debug、lib/x64/Debug；Release 仍是 Twinkle 使用的 bin/x64、lib/x64。 -->
+    <OpOutDirBin Condition="'$(Configuration)' == 'Debug'">$(OpBinDir)Debug\</OpOutDirBin>
+    <OpOutDirBin Condition="'$(Configuration)' != 'Debug'">$(OpBinDir)</OpOutDirBin>
+    <OpOutDirLib Condition="'$(Configuration)' == 'Debug'">$(OpLibDir)Debug\</OpOutDirLib>
+    <OpOutDirLib Condition="'$(Configuration)' != 'Debug'">$(OpLibDir)</OpOutDirLib>
     <OpIntDirRoot>$(OpObjDir)</OpIntDirRoot>
   </PropertyGroup>
 

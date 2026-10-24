@@ -64,8 +64,8 @@ class ImageSearchService : public ImageSearchAlgorithms {
 
     long OcrAutoFromFile(const wstring &files, double sim, std::wstring &retstr);
 
-    // 直线检测不依赖字库，只需要二值图。
-    long FindLine(const wstring &color, double sim, wstring &retStr);
+    // 直线检测不依赖字库，只需要二值图；返回值是直线上点数（64 位，8K 不溢出）。
+    long long FindLine(const wstring &color, double sim, wstring &retStr);
 
     long LoadPic(const wstring &files);
 

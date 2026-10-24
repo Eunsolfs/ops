@@ -120,7 +120,7 @@
     <Link>
       <!-- 测试有 int main(...)，必须是控制台程序（公共 props 默认是 Windows 子系统） -->
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>$(OpLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(OpOutDirLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <!--
         导入库按架构分流（与 op_x64 / op_c_api_x64 工程的 TargetName 一致）：
           x64   -> op_x64.lib / op_c_api_x64.lib

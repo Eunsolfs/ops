@@ -124,6 +124,9 @@ lib/x86/libop.lib
 lib/x86/op_c_api_x86.lib
 ```
 
+> 以上为 Release 路径。Debug 隔离到 `bin/{x64|x86}/Debug/`、`lib/{x64|x86}/Debug/`，
+> 避免同名 Debug/Release 产物互相覆盖；Twinkle 只使用 Release。
+
 `op_c_api_x64.dll` 的导入表只有系统 DLL：OpenCV / BlackBone / MinHook 都是静态链接，
 不需要额外运行库。
 

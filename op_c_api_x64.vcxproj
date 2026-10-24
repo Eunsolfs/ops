@@ -101,6 +101,9 @@ if exist "$(OpTwinkleIncludeDir)" copy /Y "$(OpRepoRoot)include\op_c_api.h" "$(O
     <Link>
       <AdditionalLibraryDirectories>$(OpOutDirLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>libop.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- x86 __stdcall 导出名带修饰；.def 同时保留修饰名并加未修饰别名，
+           让 GetProcAddress("OpCreate") 也能工作。 -->
+      <ModuleDefinitionFile Condition="'$(Platform)' == 'Win32'">$(OpRepoRoot)libop\c_api\op_c_api_x86.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
 

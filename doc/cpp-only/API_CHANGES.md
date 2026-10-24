@@ -203,11 +203,14 @@
   （旧实现会返回 `-1` 却输出伪造的 `"0,0"`）。
 - 删除的 COM dispid 保留空洞（200/201、220-244），其余 id 不重排；**late binding** 客户端调用这些
   dispid 会得到 `DISP_E_MEMBERNOTFOUND`。
-- **早期绑定兼容性（重要）**：`op.idl` 是 `dual` 接口，删除接口中段的方法会让后续方法的 vtable
-  槽位整体前移。旧 early-binding 客户端（`#import` raw/vtable、VB6 `[ComImport]`）必须重新导入
-  新的 typelib 并重新编译；否则不会报 `DISP_E_MEMBERNOTFOUND`，而是可能静默调用到错误方法。
-  根治需要升 IID / typelib 版本或新增 `IOpAutomation2`（本次未做，属于后续兼容性决策）。
+- **早期绑定兼容性（已处理）**：`op.idl` 是 `dual` 接口，删除接口中段的方法会让后续方法的 vtable
+  槽位整体前移。已把 `IOpAutomation` 的 IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`、
+  typelib 版本升为 `1.1`，`OpAutomation` 的 `IDispatchImpl` 同步为 `1,1`。旧 early-binding 客户端
+  会在 `QueryInterface` 旧 IID 时明确失败，不再可能静默调用错误方法；**late binding** 仍按
+  CLSID + dispid 工作。使用旧 typelib 的客户端必须重新导入/重新编译。
 - `libop/ocr/OcrService.*`（HTTP 客户端）保留；`TesseractOcr.*`（本地模型）删除。
+  OCR 现在只锁配置快照，HTTP 在锁外执行，并限制最多 4 个在途请求；不再因单次后端卡死阻塞
+  `SetOcrEngine` 或全进程所有 OCR。
 
 ## 5. 新增 API（DPI 感知，2026-10-25）
 
@@ -229,10 +232,11 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
 - 创建过 Op 后再调用返回 `0`，无法撤销。
 - 详细说明见 [DPI.md](DPI.md)。
 
-## 6. x86 导出名（GetProcAddress 注意）
+## 6. x86 导出名（GetProcAddress）
 
 - x64：`OpCreate` / `OpOcr` 等导出名无修饰。
-- x86：C API 使用 `__stdcall`，导出名带修饰，例如 `_OpCreate@0`、`_OpOcr@32`、
-  `_OpFindLine@32`。隐式链接请使用 `op_c_api_x86.lib`；`GetProcAddress` 必须传修饰名
-  （或改用 `#pragma comment(linker, "/alternatename:...")` / 显式 `.def` 别名）。
-  按 `OpOcr` 查找会返回 `NULL`。
+- x86：C API 使用 `__stdcall`，同时导出两种名字：
+  - 修饰名 `_OpCreate@0`、`_OpOcr@32`（供隐式链接 `.lib` 使用）；
+  - 未修饰别名 `OpCreate`、`OpOcr`（由 `libop/c_api/op_c_api_x86.def` 提供，供 `GetProcAddress` 使用）。
+- 两种写法都可用；`op_test` 的 `UtilsTest.X86CapiUndecoratedAliases` 已验证。
+- x86 导出总数因此从 200 变为 400（200 修饰 + 200 别名）；x64 仍为 200。

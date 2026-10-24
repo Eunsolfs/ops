@@ -560,7 +560,7 @@ long ImageSearchService::OcrAutoFromFile(const wstring &files, double sim, std::
     return 0;
 }
 
-long ImageSearchService::FindLine(const wstring &color, double sim, wstring &retStr) {
+long long ImageSearchService::FindLine(const wstring &color, double sim, wstring &retStr) {
     retStr.clear();
     if (sim < 0. || sim > 1.)
         sim = 1.;
