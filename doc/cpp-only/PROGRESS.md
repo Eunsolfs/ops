@@ -251,6 +251,39 @@ OpenCV   = 5.0.0
   `modules/Twinkle.Background/lib` 与 external/ops 产物 hash 一致。
 - 修复 HEAD 中 EmulatorProbe/DecoupleTest 各缺一个 `EndProject` 的旧结构问题。
 
+### 02:30 削减后功能审计与 P0/P1 修复
+
+- 三路只读审计完成，报告：
+  - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能（16 条）
+  - [AUDIT_OCR_API.md](AUDIT_OCR_API.md)：OCR/API/COM/测试一致性（15 条）
+  - [AUDIT_BUILD.md](AUDIT_BUILD.md)：VS/x86/依赖/op_test 构建链（18 条）
+  - 汇总与当前状态：[AUDIT_SUMMARY.md](AUDIT_SUMMARY.md)
+- 已修 P0：
+  - `BindWindowEx` 参数校验失败先清空输入后端 → 后续鼠标/键盘空指针。
+  - GDI printwindow 窗口 resize 后共享帧容量不足 → 越界写。
+- 已修 P1：
+  - `point_t::operator<` 非严格弱序 + OCR 用 `std::map` 丢框/顺序不一致；改为行带键 + `vector/stable_sort`。
+  - `OCR` 恒返回 1（后端不可用伪装成空结果）；改为成功 1 / HTTP 失败 0。
+  - OCR 文本 UTF-8 → CP936 → CP_ACP 双重有损；改为直接 UTF-8 → `wstring`。
+  - Debug 用 `/MTd` 与 Release 依赖 CRT 冲突；改 `/MT`，Debug x64/Win32 恢复可构建。
+  - `bootstrap-deps.ps1` 未安装 gtest；补齐并校验。
+  - PostBuild 任何配置都覆盖 Twinkle；改为仅 Release + `OpSyncTwinkle`，并同步 `op_c_api.h`。
+- 已修 P2：`FindLine` 空图伪 `0,0`、`Find*Ex` 上限 off-by-one、`OcrFromFile*` 不检查读图、
+  COM `FindStr` 空指针、OCR 测试默认端点 8080/8082 不一致、文档计数 27/200/215。
+- 验证：
+  - Release/Debug × x64/Win32 四配置 `/t:Rebuild` 均 **0 警告 / 0 错误**。
+  - `op_test` 132 cases；x64 核心集 9/9 PASS，x86 7/7 PASS（另 1 条 32 位专用 SKIP）。
+  - `cpp_call.exe`：`Ver 0.4.8.3` / `OpenCV 5.0.0`。
+  - Release PostBuild 已实测同步 DLL/LIB/头文件，`op_c_api.h` SHA256 一致。
+- 提交：`188cfae fix(audit): 修复削减分支的 P0/P1 隐藏问题并补充审计`。
+- 遗留（需决策/后续）：
+  - COM 早期绑定：删除中段方法但 IID/typelib 未升，旧 early-binding 客户端可能跳错 vtable；
+    需决定升 IID 还是新增 `IOpAutomation2`。
+  - x86 `GetProcAddress` 需用 `_OpXxx@N` 修饰名（隐式链接用 `.lib` 不受影响）。
+  - OCR HTTP 全局串行、积分图 int32 溢出、COM 无 try/catch、`check_bind` 隐式绑定桌面、
+    HTTP 正则/响应上限、FindPic 多份拷贝等性能/健壮性项。
+  - 测试缺口：FindLine、COM、GDI resize、绑定失败后输入、DPI、5K 积分图。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
@@ -267,3 +300,6 @@ OpenCV   = 5.0.0
 - [x] tests/op_test.vcxproj + x64/x86 用例
 - [x] Twinkle.sln 加入 OP 工程与构建依赖
 - [x] 提交 tests/x86/Twinkle.sln 变更（Lead）
+- [x] 削减后功能审计 + P0/P1 修复（提交 `188cfae`）
+- [ ] COM 早期绑定兼容策略（升 IID / IOpAutomation2）
+- [ ] OCR HTTP 串行化与积分图 int32 溢出

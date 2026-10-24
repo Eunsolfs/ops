@@ -2,6 +2,8 @@
 
 - 审计基线：`slim/cpp-only-vs` @ `cdb2eb3`（对照上游 `d00f837`）
 - 审计日期：2026-10-25
+- 代码修复提交：`188cfae`（`fix(audit): 修复削减分支的 P0/P1 隐藏问题并补充审计`）
+- 当前状态：工作区已提交；本文件与三份详细报告同批入库，后续文档更新见 `git log`。
 - 详细报告：
   - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能，16 条
   - [AUDIT_OCR_API.md](AUDIT_OCR_API.md)：字库 OCR 删除后的 API/COM/测试一致性，15 条
