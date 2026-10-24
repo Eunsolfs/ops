@@ -85,10 +85,11 @@
     把当前 DLL 与导入库同步过去。x64 复制 op_c_api_x64.dll，Win32 复制 op_c_api_x86.dll，
     导入库跟随 TargetName。目录不存在时（独立 clone ops）整段跳过，无任何副作用。
   -->
-  <ItemDefinitionGroup Label="OpTwinkleSync">
+  <ItemDefinitionGroup Label="OpTwinkleSync" Condition="'$(Configuration)' == 'Release' and '$(OpSyncTwinkle)' == 'true'">
     <PostBuildEvent>
-      <Command>if exist "$(OpTwinkleLibDir)" (copy /Y "$(TargetPath)" "$(OpTwinkleLibDir)" &gt;nul &amp;&amp; copy /Y "$(OpOutDirLib)$(TargetName).lib" "$(OpTwinkleLibDir)" &gt;nul)</Command>
-      <Message>[OP] Twinkle 同步（若目录存在）：$(TargetFileName) + $(TargetName).lib -&gt; $(OpTwinkleLibDir)</Message>
+      <Command>if exist "$(OpTwinkleLibDir)" (copy /Y "$(TargetPath)" "$(OpTwinkleLibDir)" &gt;nul &amp;&amp; copy /Y "$(OpOutDirLib)$(TargetName).lib" "$(OpTwinkleLibDir)" &gt;nul)
+if exist "$(OpTwinkleIncludeDir)" copy /Y "$(OpRepoRoot)include\op_c_api.h" "$(OpTwinkleIncludeDir)" &gt;nul</Command>
+      <Message>[OP] Twinkle 同步（Release）：$(TargetFileName) + $(TargetName).lib + op_c_api.h -&gt; $(OpTwinkleLibDir) / $(OpTwinkleIncludeDir)</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
 

@@ -947,7 +947,8 @@ STDMETHODIMP OpAutomation::OcrEx(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color,
 // 在屏幕范围(x1,y1,x2,y2)内,查找string(可以是任意个字符串的组合),并返回符合color_format的坐标位置
 STDMETHODIMP OpAutomation::FindStr(LONG x1, LONG y1, LONG x2, LONG y2, BSTR strs, BSTR color, DOUBLE sim, VARIANT *retx,
                                   VARIANT *rety, LONG *ret) {
-
+    if (!retx || !rety)
+        return E_POINTER;
     retx->vt = rety->vt = VT_INT;
     obj.FindStr(x1, y1, x2, y2, strs, color, sim, &retx->lVal, &rety->lVal, ret);
 

@@ -60,7 +60,7 @@ op/
 ├─ include/          Public headers
 ├─ examples/         Pure C++ usage example
 ├─ tools/            Registration-free loader tools and YOLO sample service
-├─ tests/            C++ test sources (not in the solution yet)
+├─ tests/            C++ test sources (op_test is part of op.sln)
 ├─ doc/              In-repository notes and diagrams
 ├─ 3rd_party/        Third-party source or local dependencies
 ├─ op.sln            Native VS2022 solution
@@ -102,8 +102,8 @@ Requirements:
 pwsh -File scripts\bootstrap-deps.ps1
 ```
 
-The script installs `minhook` and `directx-headers` for `x64-windows-static`, clones and
-builds BlackBone (`/MT`), and downloads/builds OpenCV 5.0.0 static libraries (`/MT`,
+The script installs `minhook`, `directx-headers`, and `gtest` for `x64-windows-static`,
+clones and builds BlackBone (`/MT`), and downloads/builds OpenCV 5.0.0 static libraries (`/MT`,
 minimal module set). Artifacts go to `build\_deps`; existing builds are reused unless
 `-Force` is passed. Use `-Arch x86` (or `-Arch both`) to prepare the x86 dependencies.
 
@@ -138,8 +138,10 @@ lib/x64/libop.lib               lib/x86/libop.lib
 lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
-x86 dependencies: `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`. Only Release is
-currently validated; Debug requires a Debug build of the OpenCV static libraries.
+x86 dependencies: `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`. Both Release and Debug
+build: Debug also uses `/MT` to match the Release OpenCV/gtest/BlackBone CRT, so
+`cv::debug_build_guard` is not triggered; the tradeoff is no `_DEBUG`/iterator debugging.
+For a true debug CRT, provide `/MTd` third-party builds as well.
 
 ### 3. Pure C++ usage
 

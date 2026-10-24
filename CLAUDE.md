@@ -42,7 +42,8 @@ Dependencies live in `build/_deps/{BlackBone,opencv}` and the vcpkg root. The pr
 ```
 
 OCR test cases need an external OCR service (`OP_OCR_URL`); they SKIP/FAIL without it.
-Only Release is validated; Debug requires a Debug build of the OpenCV static libraries.
+Release and Debug both build; Debug also uses `/MT` to match the Release dependencies
+(no `_DEBUG`/iterator debugging).
 
 The pure C++ smoke test is `examples/cpp_call`:
 
@@ -99,5 +100,6 @@ doc/cpp-only/            — Refactor notes, API changes, progress, native VS bu
   `scripts/bootstrap-deps.ps1 -Arch x86` for the x86 dependencies.
 - Output directories are centralized in `vs/op.deps.props`
   (`bin/{x64|x86}`, `lib/{x64|x86}`, `build/vs/{x64|Win32}/<Config>`).
-- Only Release is validated. Debug requires Debug builds of the OpenCV static libraries
-  (`cv::debug_build_guard` otherwise causes LNK2019).
+- Release and Debug both build; Debug also uses `/MT` to match the Release OpenCV/gtest/
+  BlackBone CRT (so `cv::debug_build_guard` is not triggered, but `_DEBUG`/iterator
+  debugging is off).

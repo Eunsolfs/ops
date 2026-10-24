@@ -155,8 +155,15 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         setlog("GdiCapture::requestCapture resources not initialized");
         return false;
     }
+    if (w <= 0 || h <= 0) {
+        setlog("GdiCapture::requestCapture invalid size %dx%d", w, h);
+        return false;
+    }
 
     img.create(w, h);
+    if (!ensure_shared_capacity(sizeof(FrameInfo) + static_cast<size_t>(w) * static_cast<size_t>(h) * 4)) {
+        return false;
+    }
     if (_render_type == RDT_NORMAL) { // normal 拷贝的大小为实际需要的大小
         release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
 
@@ -234,6 +241,24 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         ::GetWindowRect(_hwnd, &rc);
         int ww = rc.right - rc.left;
         int wh = rc.bottom - rc.top;
+        if (ww <= 0 || wh <= 0) {
+            setlog("GdiCapture::requestCapture invalid window size %dx%d", ww, wh);
+            return false;
+        }
+        // 窗口可能在 Bind 后被放大：共享内存仍是绑定时尺寸，先校验再 GetDIBits，
+        // 否则 ww*wh*4 会越过映射末尾。窗口变化后应重新 BindWindow。
+        if (!ensure_shared_capacity(sizeof(FrameInfo) + static_cast<size_t>(ww) * static_cast<size_t>(wh) * 4)) {
+            return false;
+        }
+        // 客户区请求区域映射回窗口位图后必须仍在 [0,ww)x[0,wh) 内，
+        // 否则 gdi_row 的行号会下溢成巨大的 size_t。
+        const int src_x = x1 + dx_;
+        const int src_y = y1 + dy_;
+        if (src_x < 0 || src_y < 0 || w > ww - src_x || h > wh - src_y) {
+            setlog("GdiCapture::requestCapture region out of window: src=%d,%d size=%dx%d window=%dx%d", src_x, src_y, w,
+                   h, ww, wh);
+            return false;
+        }
         release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
         // setlog("_w w=%d %d _h h=%d %d,dx=%d dy=%d", _width, w, _height, h, dx_,
         // dy_);
@@ -284,11 +309,25 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         // 将数据拷贝到目标注意实际数据是反的(注意偏移)
         auto pixels = shared_pixels(_shmem, ww, wh);
         for (int i = 0; i < h; i++) {
-            const auto row = gdi_row(pixels, ww, wh - 1 - i - y1 - dy_, x1 + dx_, w);
+            const int rowIndex = wh - 1 - i - src_y;
+            const auto row = gdi_row(pixels, ww, rowIndex, src_x, w);
             memcpy(img.ptr<uchar>(i), row.data(), row.size());
         }
     }
     return 1;
+}
+
+bool GdiCapture::ensure_shared_capacity(size_t required) {
+    if (!_shmem) {
+        setlog("GdiCapture shared frame not initialized");
+        return false;
+    }
+    if (_shmem->size() < required) {
+        setlog(L"GdiCapture shared frame too small: required=%llu capacity=%llu (window resized? rebind)",
+               static_cast<unsigned long long>(required), static_cast<unsigned long long>(_shmem->size()));
+        return false;
+    }
+    return true;
 }
 
 void GdiCapture::release_device_context() {

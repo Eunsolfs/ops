@@ -153,9 +153,6 @@ long BindingSession::BindWindow(LONG_PTR hwnd, const wstring &sdisplay, const ws
 
 long BindingSession::BindWindowEx(LONG_PTR display_hwnd, LONG_PTR input_hwnd, const wstring &sdisplay,
                                 const wstring &smouse, const wstring &skeypad, long mode) {
-    // step 1.避免重复绑定
-    reset_bind_state(false);
-
     HWND displayWnd = display_hwnd == 0 ? GetDesktopWindow() : HWND(display_hwnd);
     HWND inputWnd = input_hwnd == 0 ? displayWnd : HWND(input_hwnd);
     // step 2.check hwnd
@@ -244,6 +241,10 @@ long BindingSession::BindWindowEx(LONG_PTR display_hwnd, LONG_PTR input_hwnd, co
         setlog(L"normal.wgc requires Windows 10 build 18362 or later");
         return 0;
     }
+
+    // 参数校验全部通过后再释放旧绑定：上面的 early-return 保留当前绑定/默认输入，
+    // 避免“绑定失败 → _mouse/_keyboard 为空 → 后续输入调用空指针”。
+    reset_bind_state(false);
 
     auto prepare_backends = [&]() {
         _mode = mode;

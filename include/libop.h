@@ -459,23 +459,24 @@ class OP_API Op {
     void YoloDetectFromFile(_In_ const wchar_t *file_name, _In_ double conf, _In_ double iou, _Out_ std::wstring &retjson,
                             _Out_ long *ret);
 
-    // 识别屏幕范围(x1,y1,x2,y2)内符合color_format的字符串,并且相似度为sim,sim取值范围(0.1-1.0),
+    // 识别屏幕范围(x1,y1,x2,y2)内的字符串；color 仅为签名兼容保留（HTTP OCR 不按颜色过滤），
+    // sim 用于过滤 OCR 置信度（0.1-1.0）。
     void Ocr(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *color, _In_ double sim,
              _Out_ std::wstring &ret_str);
-    // 回识别到的字符串，以及每个字符的坐标.
+    // 返回识别到的字符串，以及每个字符的坐标（color 仅兼容保留）。
     void OcrEx(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *color, _In_ double sim,
                _Out_ std::wstring &ret_str);
-    // 在屏幕范围(x1,y1,x2,y2)内,查找string(可以是任意个字符串的组合),并返回符合color_format的坐标位置
+    // 在屏幕范围(x1,y1,x2,y2)内查找 strs（可用 | 分隔多个），返回命中坐标（color 仅兼容保留）。
     void FindStr(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *strs, _In_ const wchar_t *color,
                  _In_ double sim, _Out_ long *retx, _Out_ long *rety, _Out_ long *ret);
-    // 返回符合color_format的所有坐标位置
+    // 返回所有命中的坐标位置（color 仅兼容保留）。
     void FindStrEx(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *strs, _In_ const wchar_t *color,
                    _In_ double sim, _Out_ std::wstring &retstr);
-    // 识别屏幕范围(x1,y1,x2,y2)内的字符串,自动二值化，而无需指定颜色
+    // 识别屏幕范围(x1,y1,x2,y2)内的字符串；无需颜色，sim 过滤置信度。
     void OcrAuto(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ double sim, _Out_ std::wstring &ret_str);
-    // 从文件中识别图片
+    // 从文件中识别图片（color_format 仅兼容保留）。
     void OcrFromFile(_In_ const wchar_t *file_name, _In_ const wchar_t *color_format, _In_ double sim, _Out_ std::wstring &retstr);
-    // 从文件中识别图片,无需指定颜色
+    // 从文件中识别图片，无需颜色。
     void OcrAutoFromFile(_In_ const wchar_t *file_name, _In_ double sim, _Out_ std::wstring &retstr);
     // 查找频幕中的直线
     void FindLine(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *color, _In_ double sim,

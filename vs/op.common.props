@@ -68,7 +68,9 @@
   <ItemDefinitionGroup Condition="'$(Configuration)' == 'Debug'" Label="OpDebugCompile">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <!-- 与第三方静态库保持一致：Debug 也用 /MT（不定义 _DEBUG），
+           否则 /MTd 会触发 LNK2038 + cv::debug_build_guard。 -->
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <IntrinsicFunctions>false</IntrinsicFunctions>
     </ClCompile>

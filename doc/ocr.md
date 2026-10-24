@@ -30,8 +30,9 @@
 1. 调用方给出截图区域，`ImageSearchService` 复用当前截图（`_src`，BGRA）。
 2. 调用 `HttpOcrService::ocr(data, width, height, 4, result)`：
    - 按 `SetOcrEngine` 配置的端点/超时发送 HTTP 请求；
-   - 未显式配置时按 `tesseract` 后端默认端点 `http://127.0.0.1:8080/api/v1/ocr`；
-   - 也支持 `paddle` 别名，对应 `http://127.0.0.1:8081/api/v1/ocr`；
+   - 未显式配置时默认 `paddle_ncnn` 端点 `http://127.0.0.1:8082/api/v1/ocr`；
+   - `OP_OCR_BACKEND=tesseract` → `http://127.0.0.1:8080/api/v1/ocr`；
+   - `OP_OCR_BACKEND=paddle` → `http://127.0.0.1:8081/api/v1/ocr`；
    - 环境变量 `OP_OCR_URL` / `OP_OCR_BACKEND` / `OP_OCR_TIMEOUT_MS` 可覆盖。
 3. 解析返回的文本块：`ocr_rec_t { left_top, right_bottom, text, confidence }`。
 4. `Ocr` / `OcrEx` 按 `sim` 过滤置信度并拼装输出；

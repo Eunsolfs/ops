@@ -14,6 +14,10 @@
 - [DPI.md](DPI.md)：OpCreate 与 SetProcessDPIAware 的进程级 DPI 开关
 - [TWINKLE_SYNC.md](TWINKLE_SYNC.md)：Twinkle 侧同步与换库步骤
 - [PROGRESS.md](PROGRESS.md)：按时间记录的进度与验证结果
+- [AUDIT_SUMMARY.md](AUDIT_SUMMARY.md)：削减后功能审计汇总（已修/待修、构建与测试证据）
+  - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能
+  - [AUDIT_OCR_API.md](AUDIT_OCR_API.md)：OCR/API/COM/测试一致性
+  - [AUDIT_BUILD.md](AUDIT_BUILD.md)：VS/x86/依赖脚本/op_test 构建链
 
 ---
 

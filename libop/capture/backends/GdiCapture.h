@@ -37,6 +37,9 @@ class GdiCapture : public ICaptureBackend {
     FrameInfo m_frameInfo;
     void release_device_context();
     void fmtFrameInfo(void *dst, HWND hwnd, int w, int h);
+    // 共享帧容量守卫：绑定后窗口被放大时，按绑定时尺寸分配的共享内存不足以
+    // 容纳本次 GetDIBits 的 w*h*4，必须拒绝而不是越界写。
+    bool ensure_shared_capacity(size_t required);
 };
 
 } // namespace op::capture

@@ -28,6 +28,10 @@
   -->
   <PropertyGroup Label="OpTwinkleIntegration">
     <OpTwinkleLibDir Condition="'$(OpTwinkleLibDir)' == ''">$(OpRepoRoot)..\..\modules\Twinkle.Background\lib\</OpTwinkleLibDir>
+    <OpTwinkleIncludeDir Condition="'$(OpTwinkleIncludeDir)' == ''">$(OpRepoRoot)..\..\external\OP\op-include\</OpTwinkleIncludeDir>
+    <!-- 只允许 Release 同步，避免 Debug 产物覆盖 Twinkle 使用的 Release DLL。
+         需要临时关闭时：/p:OpSyncTwinkle=false -->
+    <OpSyncTwinkle Condition="'$(OpSyncTwinkle)' == ''">true</OpSyncTwinkle>
   </PropertyGroup>
 
   <!-- ============================ BlackBone ============================ -->

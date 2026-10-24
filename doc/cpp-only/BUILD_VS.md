@@ -19,16 +19,16 @@ op.sln
 | 文件 | 作用 |
 | --- | --- |
 | `vs/op.common.props` | 编译/链接/MIDL 选项、include 顺序、输出目录 |
-| `vs/op.deps.props` | BlackBone / vcpkg / OpenCV 路径，全部相对 `$(SolutionDir)` |
+| `vs/op.deps.props` | BlackBone / vcpkg / OpenCV 路径，全部相对 `$(MSBuildThisFileDirectory)`（`$(OpRepoRoot)`） |
 | `vs/op.sources.props` | libop 源码清单（与旧 CMake 逐条对应） |
 
-构建配置只有 `Debug|x64` 与 `Release|x64`。
+构建配置为 `Debug|/Release` × `x64|Win32`。
 
 ## 2. 环境要求
 
 - Windows 10/11
 - Visual Studio 2022（v143；需要 **ATL** 与 **Windows SDK 10.0.22621**）
-- vcpkg（`minhook`、`directx-headers` 的 `x64-windows-static` 包）
+- vcpkg（`minhook`、`directx-headers`、`gtest` 的 `x64-windows-static` / `x86-windows-static` 包）
 - CMake（只用于一次性构建 BlackBone / OpenCV，第三方工程本来就用 CMake）
 
 本机已验证路径：
@@ -45,7 +45,8 @@ pwsh -File scripts\bootstrap-deps.ps1
 
 脚本执行：
 
-1. `vcpkg install minhook:x64-windows-static directx-headers:x64-windows-static`
+1. `vcpkg install minhook:x64-windows-static directx-headers:x64-windows-static gtest:x64-windows-static`
+   （`gtest` 供 `op_test` 使用；x86 对应 `x86-windows-static`）
 2. `git clone https://github.com/DarthTon/Blackbone` 到 `build\_deps\BlackBone`
 3. 构建 BlackBone（`/MT`，Release）
 4. 下载 OpenCV 5.0.0 源码到 `build\_deps\opencv`，构建静态库并 install 到
@@ -172,11 +173,11 @@ OpDestroy(h);
   OpenCV   = 5.0.0
   ```
 - `dumpbin /exports op_c_api_x64.dll`：
-  - 198 个导出；`OpCreate` / `OpDestroy` / `OpVer` / `OpOcr` / `OpFindStr` /
+  - 200 个导出；`OpCreate` / `OpDestroy` / `OpVer` / `OpOcr` / `OpFindStr` /
     `OpFindLine` / `OpSetOcrEngine` / `OpCv*` 存在。
-  - 已删的 28 个字库类符号（`OpSetDict`、`OpFetchWord*`、`OpGetWordPreview`、
+  - 已删的 27 个字库类符号（`OpSetDict`、`OpFetchWord*`、`OpGetWordPreview`、
     `OpGetBinaryPreview` 等）**0 个存在**。
-- `op_x64.dll`：213 个导出，`DllGetClassObject` / `DllRegisterServer` /
+- `op_x64.dll`：215 个导出，`DllGetClassObject` / `DllRegisterServer` /
   `SetDisplayHook` / `SetInputHook` 等 COM + Hook 导出完整。
 - 版本资源：`op_x64.dll` / `op_c_api_x64.dll` 的 `FileVersion` / `ProductVersion`
   均为 `0.4.8.3`。
@@ -242,10 +243,11 @@ op_handle h = OpCreate();
 
 ## 8. 已知限制
 
-- **Debug 配置**：OpenCV 目前只构建了 Release/MT 静态库；Debug 会切到
-  `cv::debug_build_guard` 命名空间，链接报 `LNK2019`。当前只验证 **Release|x64 /
-  Release|Win32**。需要 Debug 时得补一份 Debug 版 OpenCV（`opencv_*d.lib`），再调整
-  公共 props 的库名。
+- **Debug 配置**：6 个工程 × x64/Win32 的 Debug 均可构建。Debug 也使用 `/MT`（与
+  Release 版 OpenCV/gtest/BlackBone 的 CRT 一致），因此不会触发
+  `cv::debug_build_guard`，也不会出现 LNK2038；代价是不含 `_DEBUG`/迭代器调试。
+  需要真正的 Debug CRT 时，再补一套 `/MTd` 的 OpenCV/gtest/BlackBone 并调整
+  `vs/op.common.props` 的 `RuntimeLibrary`。
 - **x86 依赖**：已经可用；用 `pwsh -File scripts/bootstrap-deps.ps1 -Arch x86` 准备。
   x86 的 MinHook 库名是 `minhook.x32.lib`（不是 `minhook.x86.lib`），已在
   `vs/op.deps.props` 处理。

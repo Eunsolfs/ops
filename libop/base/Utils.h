@@ -6,6 +6,26 @@ std::wstring _s2wstring(const std::string &s);
 std::string _ws2string(const std::wstring &s);
 
 std::string utf8_to_ansi(std::string strUTF8);
+// UTF-8 -> 宽字符（不走 CP936/CP_ACP 中转，保留中文/emoji/日文等非 ANSI 字符）。
+// 放在头文件里是为了让 op_test 等不导出内部符号的调用方也能直接使用。
+inline std::wstring utf8_to_wstring(const std::string &strUTF8) {
+    if (strUTF8.empty())
+        return {};
+
+    const int length = static_cast<int>(strUTF8.size());
+    int wide_length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, strUTF8.data(), length, nullptr, 0);
+    DWORD flags = MB_ERR_INVALID_CHARS;
+    if (wide_length <= 0) {
+        flags = 0;
+        wide_length = MultiByteToWideChar(CP_UTF8, flags, strUTF8.data(), length, nullptr, 0);
+    }
+    if (wide_length <= 0)
+        return {};
+
+    std::wstring wide(static_cast<size_t>(wide_length), L'\0');
+    MultiByteToWideChar(CP_UTF8, flags, strUTF8.data(), length, wide.data(), wide_length);
+    return wide;
+}
 // 将路径转化为全局路径
 long Path2GlobalPath(const std::wstring &file, const std::wstring &curr_path, std::wstring &out);
 

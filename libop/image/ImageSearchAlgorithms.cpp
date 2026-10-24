@@ -78,23 +78,32 @@ struct ocr_text_span_t {
     point_t point;
 };
 
-std::wstring build_ocr_text_spans(const std::map<point_t, ocr_rec_t> &ps, std::vector<ocr_text_span_t> &spans) {
+std::wstring build_ocr_text_spans(const std::vector<ocr_rec_t> &ps, std::vector<ocr_text_span_t> &spans) {
     spans.clear();
     std::wstring text;
 
     for (const auto &it : ps) {
-        if (it.second.text.empty())
+        if (it.text.empty())
             continue;
 
         ocr_text_span_t span;
         span.begin = text.size();
-        text.append(it.second.text);
+        text.append(it.text);
         span.end = text.size();
-        span.point = it.first;
+        span.point = it.left_top;
         spans.push_back(span);
     }
 
     return text;
+}
+
+// OCR 返回的是“框”列表，不是文本流。Ocr/FindStr* 必须共用同一阅读顺序，
+// 否则 Ocr 拼出的字符串和 FindStr 搜索的字符串可能不一致；同时不能用 map
+// 以 left_top 为键（同 key 的框会被静默覆盖）。
+void sort_ocr_results(std::vector<ocr_rec_t> &ps) {
+    std::stable_sort(ps.begin(), ps.end(), [](const ocr_rec_t &a, const ocr_rec_t &b) {
+        return a.left_top < b.left_top;
+    });
 }
 
 const ocr_text_span_t *find_ocr_text_span(const std::vector<ocr_text_span_t> &spans, size_t index) {
@@ -573,7 +582,7 @@ long ImageSearchAlgorithms::FindColorEx(vector<color_df_t> &colors, double sim, 
                 retstr += std::to_wstring(j + _x1 + _dx) + L"," + std::to_wstring(i + _y1 + _dy);
                 retstr += L"|";
                 ++find_ct;
-                return find_ct > _max_return_obj_ct;
+                return find_ct >= _max_return_obj_ct;
             }
         }
         return false;
@@ -681,7 +690,7 @@ long ImageSearchAlgorithms::FindMultiColorEx(std::vector<color_df_t> &first_colo
                 retstr += to_wstring(j + _x1 + _dx) + L"," + to_wstring(i + _y1 + _dy);
                 retstr += L"|";
                 ++find_ct;
-                return find_ct > _max_return_obj_ct;
+                return find_ct >= _max_return_obj_ct;
             }
         }
         return false;
@@ -949,7 +958,7 @@ long ImageSearchAlgorithms::FindColorBlockEx(long count, long height, long width
             if (region_sum(j, i, j + width, i + height) >= count) {
                 retstr += to_wstring(j + _x1 + _dx) + L"," + to_wstring(i + _y1 + _dy) + L"|";
                 ++cnt;
-                if (cnt > _max_return_obj_ct)
+                if (cnt >= _max_return_obj_ct)
                     goto _quick_return;
             }
         }
@@ -961,12 +970,14 @@ _quick_return:
     return cnt;
 }
 
-long ImageSearchAlgorithms::FindStr(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr, long &retx,
+long ImageSearchAlgorithms::FindStr(const std::vector<ocr_rec_t> &ps, const vector<wstring> &vstr, long &retx,
                         long &rety) {
     retx = rety = -1;
 
+    std::vector<ocr_rec_t> ordered = ps;
+    sort_ocr_results(ordered);
     std::vector<ocr_text_span_t> spans;
-    const std::wstring str = build_ocr_text_spans(ps, spans);
+    const std::wstring str = build_ocr_text_spans(ordered, spans);
 
     for (size_t i = 0; i < vstr.size(); ++i) {
         if (vstr[i].empty())
@@ -988,7 +999,7 @@ long ImageSearchAlgorithms::FindStr(std::map<point_t, ocr_rec_t> &ps, const vect
     return -1;
 }
 
-long ImageSearchAlgorithms::FindStrEx(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr,
+long ImageSearchAlgorithms::FindStrEx(const std::vector<ocr_rec_t> &ps, const vector<wstring> &vstr,
                           std::wstring &retstr) {
     // 描述：查找屏幕指定位置的字符（或者字符串）位置，返回所有出现的坐标（注意与FindStr接口的区别）！！！
     //----------------------步骤-----------------
@@ -1000,8 +1011,10 @@ long ImageSearchAlgorithms::FindStrEx(std::map<point_t, ocr_rec_t> &ps, const ve
 
     retstr.clear();
 
+    std::vector<ocr_rec_t> ordered = ps;
+    sort_ocr_results(ordered);
     std::vector<ocr_text_span_t> spans;
-    const std::wstring str = build_ocr_text_spans(ps, spans);
+    const std::wstring str = build_ocr_text_spans(ordered, spans);
 
     int find_ct = 0;
     for (size_t i = 0; i < vstr.size(); ++i) {
@@ -1023,7 +1036,7 @@ long ImageSearchAlgorithms::FindStrEx(std::map<point_t, ocr_rec_t> &ps, const ve
                 retstr += std::to_wstring(span->point.y + _y1 + _dy);
                 retstr += L"|";
                 ++find_ct;
-                if (find_ct > _max_return_obj_ct)
+                if (find_ct >= _max_return_obj_ct)
                     goto _quick_return;
             }
 
@@ -1038,6 +1051,8 @@ _quick_return:
 
 long ImageSearchAlgorithms::FindLine(std::wstring &outStr) {
     outStr.clear();
+    if (_binary.empty())
+        return 0; // 无二值图 = 无直线；不要输出伪造的 "0,0"
     int h = static_cast<int>(sqrt(_binary.width * _binary.width + _binary.height * _binary.height)) + 2;
     _sum.create(360, h);
     // 行：距离，列：角度

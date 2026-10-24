@@ -196,12 +196,17 @@
 
 - `Ocr` / `OcrEx` / `FindStr` / `FindStrEx` 的 `color` 参数不再参与识别，仅保留签名兼容
   （内部 `(void)color`）；OCR 始终走 `HttpOcrService`。
-- `ImageSearchService::OCR` 的返回值由 HTTP 分支原来的 `0` 改为 `1`（成功语义）；
-  C++/C/COM 三层都是 `void` 或字符串返回，不影响 ABI。
+- `ImageSearchService::OCR` 的返回值：HTTP 成功返回 `1`（即使没有文字），HTTP 失败/超时/解析失败返回 `0`
+  （旧实现无条件返回 `1`，无法区分“后端不可用”和“空结果”）。C++/C/COM 三层都是 `void` 或字符串返回，不影响 ABI。
 - `FindLine` 保留；它是独立的二值图直线检测，不依赖字库。二值预处理固定为默认值
-  （关闭），等价于旧 `SetBinaryPreprocess(0, ...)` 的初始状态。
-- 删除的 COM dispid 保留空洞（200/201、220-244），其余 id 不重排；旧客户端调用这些
+  （关闭），等价于旧 `SetBinaryPreprocess(0, ...)` 的初始状态。无有效二值图时返回 `0` 且输出空串
+  （旧实现会返回 `-1` 却输出伪造的 `"0,0"`）。
+- 删除的 COM dispid 保留空洞（200/201、220-244），其余 id 不重排；**late binding** 客户端调用这些
   dispid 会得到 `DISP_E_MEMBERNOTFOUND`。
+- **早期绑定兼容性（重要）**：`op.idl` 是 `dual` 接口，删除接口中段的方法会让后续方法的 vtable
+  槽位整体前移。旧 early-binding 客户端（`#import` raw/vtable、VB6 `[ComImport]`）必须重新导入
+  新的 typelib 并重新编译；否则不会报 `DISP_E_MEMBERNOTFOUND`，而是可能静默调用到错误方法。
+  根治需要升 IID / typelib 版本或新增 `IOpAutomation2`（本次未做，属于后续兼容性决策）。
 - `libop/ocr/OcrService.*`（HTTP 客户端）保留；`TesseractOcr.*`（本地模型）删除。
 
 ## 5. 新增 API（DPI 感知，2026-10-25）
@@ -223,3 +228,11 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
 - `1`：第一次创建 Op 时调用 `SetProcessDPIAware()`，OP 使用物理像素。
 - 创建过 Op 后再调用返回 `0`，无法撤销。
 - 详细说明见 [DPI.md](DPI.md)。
+
+## 6. x86 导出名（GetProcAddress 注意）
+
+- x64：`OpCreate` / `OpOcr` 等导出名无修饰。
+- x86：C API 使用 `__stdcall`，导出名带修饰，例如 `_OpCreate@0`、`_OpOcr@32`、
+  `_OpFindLine@32`。隐式链接请使用 `op_c_api_x86.lib`；`GetProcAddress` 必须传修饰名
+  （或改用 `#pragma comment(linker, "/alternatename:...")` / 显式 `.def` 别名）。
+  按 `OpOcr` 查找会返回 `NULL`。

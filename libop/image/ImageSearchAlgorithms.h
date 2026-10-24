@@ -6,7 +6,6 @@
 由于ocr与图像查找类似，故也在类ImageLoc中实现
 */
 #include "../base/Types.h"
-#include "../image/BitFunctions.h"
 #include "../image/Color.h"
 #include "../image/Image.h"
 #include "../base/ThreadPool.h"
@@ -124,9 +123,9 @@ class ImageSearchAlgorithms {
 
     long FindColorBlockEx(long count, long height, long width, std::wstring &retstr);
 
-    long FindStr(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr, long &retx, long &rety);
+    long FindStr(const std::vector<ocr_rec_t> &ps, const vector<wstring> &vstr, long &retx, long &rety);
 
-    long FindStrEx(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr, std::wstring &out_str);
+    long FindStrEx(const std::vector<ocr_rec_t> &ps, const vector<wstring> &vstr, std::wstring &out_str);
     // 描述：查找目标图像中的直线
     // 输出：outStr:直线描述[法线角度，直线到原点的距离];ret:该直线上的点的数量
     long FindLine(std::wstring &outStr);

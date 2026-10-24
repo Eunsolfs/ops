@@ -253,7 +253,18 @@ long ImageSearchService::OCR(const wstring &color, double sim, std::wstring &out
         sim = 1.;
 
     vocr_rec_t res;
-    HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
+    const int ocr_ret = HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
+    if (ocr_ret < 0) {
+        // 与“识别成功但没有文字”区分：后端不可用/超时/解析失败时返回 0，
+        // 让上层能停止轮询，而不是把失败伪装成空结果。
+        setlog("OCR HTTP request failed: ret=%d", ocr_ret);
+        return 0;
+    }
+    // OCR 结果是框列表；Ocr/OcrEx/FindStr* 统一按 (9px 行带, x) 的阅读顺序输出，
+    // 否则同一批结果在两套 API 里可能拼出不同的字符串。
+    std::stable_sort(res.begin(), res.end(), [](const ocr_rec_t &a, const ocr_rec_t &b) {
+        return a.left_top < b.left_top;
+    });
     for (auto &it : res) {
         if (it.confidence >= sim - 1e-9) {
             out_str += it.text;
@@ -455,7 +466,12 @@ long ImageSearchService::OcrEx(const wstring &color, double sim, std::wstring &r
 
     vocr_rec_t res;
     int find_ct = 0;
-    HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
+    const int ocr_ret = HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
+    if (ocr_ret < 0)
+        return 0;
+    std::stable_sort(res.begin(), res.end(), [](const ocr_rec_t &a, const ocr_rec_t &b) {
+        return a.left_top < b.left_top;
+    });
     for (auto &it : res) {
         if (it.confidence >= sim - 1e-9) {
             retstr += std::to_wstring(it.left_top.x + _x1 + _dx);
@@ -465,7 +481,7 @@ long ImageSearchService::OcrEx(const wstring &color, double sim, std::wstring &r
             retstr += it.text;
             retstr += L"|";
             ++find_ct;
-            if (find_ct > _max_return_obj_ct)
+            if (find_ct >= _max_return_obj_ct)
                 break;
         }
     }
@@ -482,12 +498,12 @@ long ImageSearchService::FindStr(const wstring &str, const wstring &color, doubl
     if (sim < 0. || sim > 1.)
         sim = 1.;
 
-    std::map<point_t, ocr_rec_t> ocr_res;
+    std::vector<ocr_rec_t> ocr_res;
     vocr_rec_t res;
     HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
     for (auto &it : res) {
         if (it.confidence >= sim - 1e-9) {
-            ocr_res[it.left_top] = it;
+            ocr_res.push_back(it);
         }
     }
     return ImageSearchAlgorithms::FindStr(ocr_res, vstr, retx, rety);
@@ -502,12 +518,12 @@ long ImageSearchService::FindStrEx(const wstring &str, const wstring &color, dou
     if (sim < 0. || sim > 1.)
         sim = 1.;
 
-    std::map<point_t, ocr_rec_t> ocr_res;
+    std::vector<ocr_rec_t> ocr_res;
     vocr_rec_t res;
     HttpOcrService::getInstance()->ocr(_src.pdata, _src.width, _src.height, 4, res);
     for (auto &it : res) {
         if (it.confidence >= sim - 1e-9) {
-            ocr_res[it.left_top] = it;
+            ocr_res.push_back(it);
         }
     }
     return ImageSearchAlgorithms::FindStrEx(ocr_res, vstr, out_str);
@@ -523,7 +539,8 @@ long ImageSearchService::OcrFromFile(const wstring &files, const wstring &color,
         sim = 1.;
     wstring fullpath;
     if (Path2GlobalPath(files, _curr_path, fullpath)) {
-        _src.read(fullpath.data());
+        if (!_src.read(fullpath.data()))
+            return 0;
         return OCR(color, sim, retstr);
     }
     return 0;
@@ -536,7 +553,8 @@ long ImageSearchService::OcrAutoFromFile(const wstring &files, double sim, std::
     wstring fullpath;
 
     if (Path2GlobalPath(files, _curr_path, fullpath)) {
-        _src.read(fullpath.data());
+        if (!_src.read(fullpath.data()))
+            return 0;
         return OCR(L"", sim, retstr);
     }
     return 0;

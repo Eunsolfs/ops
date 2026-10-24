@@ -60,7 +60,7 @@ op/
 ├─ include/          对外头文件
 ├─ examples/         纯 C++ 调用示例
 ├─ tools/            免注册加载工具和 YOLO 服务样例
-├─ tests/            C++ 测试源码（当前未纳入解决方案）
+├─ tests/            C++ 测试源码（op_test 已加入 op.sln）
 ├─ doc/              项目内补充文档和流程图
 ├─ 3rd_party/        第三方源码或本地依赖
 ├─ op.sln            原生 VS2022 解决方案
@@ -104,7 +104,7 @@ pwsh -File scripts\bootstrap-deps.ps1
 
 脚本会：
 
-- 通过 vcpkg 安装 `x64-windows-static` 的 `minhook`、`directx-headers`
+- 通过 vcpkg 安装 `x64-windows-static` 的 `minhook`、`directx-headers`、`gtest`（gtest 用于 `op_test`）
 - 克隆并构建 BlackBone（`/MT`）
 - 下载并构建 OpenCV 5.0.0 静态库（`/MT`，最小模块集）
 
@@ -140,8 +140,10 @@ lib/x64/libop.lib               lib/x86/libop.lib
 lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
-x86 依赖用 `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86` 准备。当前只验证
-Release；Debug 需要额外构建 Debug 版 OpenCV 静态库。
+x86 依赖用 `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86` 准备。Release / Debug 均可构建：
+Debug 也使用 `/MT`（与 Release 版 OpenCV/gtest/BlackBone 的 CRT 一致），因此不会触发
+`cv::debug_build_guard`；代价是 Debug 不含 `_DEBUG`/迭代器调试。需要真正的 Debug CRT 时，
+再补一套 `/MTd` 的第三方库。
 
 ### 3. 纯 C++ 调用
 

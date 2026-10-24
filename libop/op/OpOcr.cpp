@@ -80,6 +80,7 @@ void op::Op::OcrAutoFromFile(const wchar_t *file_name, double sim, std::wstring 
 }
 
 void op::Op::FindLine(long x1, long y1, long x2, long y2, const wchar_t *color, double sim, wstring &retstr) {
+    retstr.clear();
     internal::with_captured_region(m_context.get(), x1, y1, x2, y2,
                                    [&]() { m_context->image_proc.FindLine(color, sim, retstr); });
 }

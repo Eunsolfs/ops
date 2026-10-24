@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     OP 自身只使用原生 Visual Studio 工程（op.sln）构建；本脚本只负责一次性准备第三方库：
-      - vcpkg: minhook / directx-headers（x64-windows-static、x86-windows-static）
+      - vcpkg: minhook / directx-headers / gtest（x64-windows-static、x86-windows-static）
       - BlackBone: 从源码构建 BlackBone.lib（/MT），按架构输出到 build\vs2022-x64 或 build\vs2022-Win32
       - OpenCV 5.0.0: 从源码构建静态库（/MT，最小模块集），install 到 install\vs2022-x64 或 install\vs2022-Win32
 
@@ -165,15 +165,20 @@ New-Item -ItemType Directory -Force -Path $DepsRoot | Out-Null
 # ---------------------------------------------------------------------------
 function Install-VcpkgPackages([string]$TargetArch) {
     $triplet = Get-VcpkgTriplet $TargetArch
-    Write-Step "vcpkg: 安装 $triplet 的 minhook / directx-headers"
+    Write-Step "vcpkg: 安装 $triplet 的 minhook / directx-headers / gtest"
     Invoke-Checked $vcpkgExe @(
         "install",
         "minhook:$triplet",
-        "directx-headers:$triplet"
+        "directx-headers:$triplet",
+        "gtest:$triplet"
     )
     $libDir = Join-Path $vcpkg "installed\$triplet\lib"
     if (-not (Test-Path $libDir)) {
         throw "vcpkg 安装后未找到 $libDir"
+    }
+    $gtestLib = Join-Path $libDir "gtest.lib"
+    if (-not (Test-Path $gtestLib)) {
+        throw "vcpkg 安装后未找到 $gtestLib（tests/op_test.vcxproj 需要 gtest）"
     }
     Write-Host "  vcpkg install dir: $(Join-Path $vcpkg "installed\$triplet")" -ForegroundColor Green
 }

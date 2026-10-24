@@ -162,7 +162,7 @@ int HttpOcrService::ocr(byte *data, int w, int h, int bpp, vocr_rec_t &result) {
         ts.right_bottom = point_t(atoi(bbox_m[3].str().c_str()), atoi(bbox_m[4].str().c_str()));
         ts.confidence = static_cast<float>(atof(conf_m[1].str().c_str()));
         const std::string text = json_unescape(text_m[1].str());
-        ts.text = _s2wstring(utf8_to_ansi(text));
+        ts.text = utf8_to_wstring(text);
         result.push_back(ts);
         ++n;
     }

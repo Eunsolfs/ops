@@ -91,12 +91,19 @@ std::wstring GetConfiguredOcrEndpoint() {
     }
 
     const std::wstring backend = GetEnvString(L"OP_OCR_BACKEND");
+    if (!_wcsicmp(backend.c_str(), L"tesseract") || !_wcsicmp(backend.c_str(), L"tess")) {
+        return L"http://127.0.0.1:8080/api/v1/ocr";
+    }
+    if (!_wcsicmp(backend.c_str(), L"paddle_ncnn")) {
+        return L"http://127.0.0.1:8082/api/v1/ocr";
+    }
     if (!_wcsicmp(backend.c_str(), L"paddle") || !_wcsicmp(backend.c_str(), L"paddleocr") ||
         !_wcsicmp(backend.c_str(), L"paddle_ocr")) {
         return L"http://127.0.0.1:8081/api/v1/ocr";
     }
 
-    return L"http://127.0.0.1:8080/api/v1/ocr";
+    // 与 libop/ocr/OcrService.cpp 的默认一致：paddle_ncnn :8082（不是 tesseract :8080）。
+    return L"http://127.0.0.1:8082/api/v1/ocr";
 }
 
 bool IsOcrServerHealthy() {

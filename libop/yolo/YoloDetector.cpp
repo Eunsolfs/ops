@@ -125,7 +125,7 @@ int YoloDetector::detect(byte *data, int w, int h, int bpp, double conf, double 
         std::smatch label_m;
         std::smatch class_id_m;
         if (std::regex_search(obj, label_m, label_re))
-            rec.label = _s2wstring(utf8_to_ansi(json_unescape(label_m[1].str())));
+            rec.label = utf8_to_wstring(json_unescape(label_m[1].str()));
         if (std::regex_search(obj, class_id_m, class_id_re))
             rec.class_id = atoi(class_id_m[1].str().c_str());
         rec.left_top = point_t(atoi(bbox_m[1].str().c_str()), atoi(bbox_m[2].str().c_str()));

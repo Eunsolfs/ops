@@ -5,7 +5,7 @@
 
 ## 1. 为什么要改 Twinkle
 
-ops 精简后删除了 28 个 C API（点阵字库 / 本地字库 / 内存字库）。Twinkle 的
+ops 精简后删除了 27 个 C API（点阵字库 / 本地字库 / 内存字库）。Twinkle 的
 `modules/Twinkle.Background` 里原来有 27 个 `OPController` 封装直接调用这些 `Op*`
 函数。如果只换 `op_c_api_x64.lib` 而不改 Twinkle，链接会报 `LNK2019`。
 
@@ -52,6 +52,9 @@ external/ops/bin/x64/op_x64.dll
 
 同步到 Twinkle 使用的位置：
 
+> Release 构建 `op_c_api_x64` 的 PostBuild 已自动复制 DLL / 导入库 / `op_c_api.h`
+> （`/p:OpSyncTwinkle=false` 可关闭）。下面的手动命令仅在关闭自动同步或独立拷贝时使用。
+
 ```powershell
 # 头文件（Twinkle 所有工程通过 external\OP\op-include 引用）
 Copy-Item external\ops\include\op_c_api.h external\OP\op-include\op_c_api.h -Force
@@ -94,7 +97,7 @@ x86 已完整配置并构建（`op.sln` 的 `Release|Win32`）：
   （0 警告 / 0 错误）。
 - `ColorSelfTest.vcxproj` Release|x64 使用新 `op_c_api_x64.lib` 链接通过
   （0 警告 / 0 错误），PostBuild 复制的新 DLL 与 ops 产物哈希一致。
-- ops 新 `op_c_api.h` 已无被删的 28 个声明；新 `op_c_api_x64.lib` 已无对应导出。
+- ops 新 `op_c_api.h` 已无被删的 27 个声明；新 `op_c_api_x64.lib` 已无对应导出。
 
 ## 6. 历史文档
 

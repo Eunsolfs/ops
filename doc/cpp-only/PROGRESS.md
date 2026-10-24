@@ -116,7 +116,7 @@ OpenCV4 的 `opencv_modules.hpp`，而 `dnn.hpp` 也是旧版。
   - `ImageSearchAlgorithms` / `ImageSearchService` 删除字库槽、二值预处理状态、
     取字/预览/字库工具；`Ocr/OcrEx/FindStr/FindStrEx` 统一走 HTTP；
     `FindLine` 保留独立二值化路径；
-  - C++ 28 个、C API 28 个、COM 27 个 dispid 同步删除；
+  - C++ 27 个、C API 27 个、COM 27 个 dispid 同步删除；
   - tests 保留 15 个 HTTP OCR 用例、20 个颜色/找图用例。
 - Lead 发现并让 ocr-surgeon 补回 `str2binaryfbk(color, sim)` 定义（否则 FindLine/
   FindColorBlock 会 LNK2019），已修复。
@@ -131,7 +131,7 @@ OpenCV4 的 `opencv_modules.hpp`，而 `dnn.hpp` 也是旧版。
   - `bin/x64/tools.dll`
   - `lib/x64/libop.lib`（23,861,072）
   - `lib/x64/op_c_api_x64.lib`
-- C API 导出 198 个；28 个字库类符号全部不存在；COM/Hook 导出完整。
+- C API 导出 200 个；27 个字库类符号全部不存在；COM/Hook 导出完整。
 - `op_c_api_x64.dll` 导入表只有系统 DLL（OpenCV/BlackBone/MinHook 均静态链接）。
 
 ### 00:39 纯 C++ 示例 + 冒烟
@@ -180,7 +180,7 @@ OpenCV   = 5.0.0
   ID       = 0
   OpenCV   = 5.0.0
   ```
-- `op_c_api_x64.dll`：198 个导出；28 个字库类符号 0 个存在。
+- `op_c_api_x64.dll`：200 个导出；27 个字库类符号 0 个存在。
 - `op_x64.dll`：COM + Hook 导出完整。
 - `bootstrap-deps.ps1` 在依赖已存在时正确跳过。
 - 临时日志/脚本/冒烟源码已清理。
@@ -239,7 +239,8 @@ OpenCV   = 5.0.0
   x86 核心集 9 PASS + 1 SKIP，扩展集 15 PASS + 1 SKIP。
 - OCR 用例需要外部服务，未纳入；WGC/窗口/DX 注入类需真机环境。
 - `tests/opencv_test.cpp` 修 9 处 C4244（double → RecordProperty）。
-- Debug 全仓库链接受限：OpenCV 只有 Release/MT，Debug 需 Debug 版 OpenCV。
+- 2026-10-25 修复：Debug 全仓库改为 `/MT`（与 Release 依赖 CRT 一致），x64/Win32
+  Debug 均 0 警告 0 错误；代价是无 `_DEBUG`/迭代器调试。
 
 ### 01:22 Twinkle.sln 集成
 

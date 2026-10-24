@@ -27,10 +27,17 @@ struct point_t {
     point_t(int x_, int y_) : x(x_), y(y_) {
     }
     bool operator<(const point_t &rhs) const {
-        if (std::abs(y - rhs.y) < 9)
+        // 原始实现按“y 差 < 9 就比较 x”排序，这种比较器不满足严格弱序：
+        // 例如 a(0,8) < b(10,0)、b < c(0,16)，但 a 与 c 在该规则下等价，
+        // 用它做 std::map 键是 UB，会静默丢 OCR 结果。这里改成稳定的 9px 行带
+        // 量化键（band, x, y），既有原来的行分组效果，又满足严格弱序。
+        const int band = y >= 0 ? y / 9 : (y - 8) / 9;
+        const int rhs_band = rhs.y >= 0 ? rhs.y / 9 : (rhs.y - 8) / 9;
+        if (band != rhs_band)
+            return band < rhs_band;
+        if (x != rhs.x)
             return x < rhs.x;
-        else
-            return y < rhs.y;
+        return y < rhs.y;
     }
     bool operator==(const point_t &rhs) const {
         return x == rhs.x && y == rhs.y;
