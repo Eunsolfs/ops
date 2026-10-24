@@ -54,7 +54,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalLibraryDirectories>$(OpOpenCvLibDir);$(OpVcpkgStaticDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <!-- DLL 的导入库统一放到 lib\x64（与旧 CMake install ARCHIVE DESTINATION 一致） -->
+      <!-- DLL 的导入库统一放到 lib\<arch>（x64 -> lib\x64，Win32 -> lib\x86，与旧 CMake install ARCHIVE DESTINATION 一致） -->
       <ImportLibrary Condition="'$(ConfigurationType)' == 'DynamicLibrary'">$(OpOutDirLib)$(TargetName).lib</ImportLibrary>
       <!-- 静态依赖：OpenCV 5（含 3rdparty）/ BlackBone / MinHook / WGC(winrt) / dwmapi -->
       <AdditionalDependencies Condition="'$(OpLinkHeavyDeps)' != 'false'">$(OpOpenCvLibs);$(BlackBoneLib);$(OpMinHookLib);windowsapp.lib;runtimeobject.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -116,8 +116,13 @@
         midl.exe 自身会用 cl.exe 做预处理器，并通过 INCLUDE 找 oaidl.idl 等导入文件。
         直接由 msbuild 构建时环境里没有 vcvars 的 PATH/INCLUDE，这里显式补齐，
         保证「Developer 命令行 / 普通命令行 / VS IDE」三种方式都能重复构建。
+        Host 工具集跟随目标架构：x64 -> HostX64\x64，Win32 -> HostX86\x86。
       -->
-      <_OpMidlClDir Condition="'$(VCToolsInstallDir)' != '' and Exists('$(VCToolsInstallDir)bin\HostX64\x64\cl.exe')">$(VCToolsInstallDir)bin\HostX64\x64</_OpMidlClDir>
+      <_OpMidlClDir Condition="'$(Platform)' == 'x64' and '$(VCToolsInstallDir)' != '' and Exists('$(VCToolsInstallDir)bin\HostX64\x64\cl.exe')">$(VCToolsInstallDir)bin\HostX64\x64</_OpMidlClDir>
+      <_OpMidlClDir Condition="'$(Platform)' != 'x64' and '$(VCToolsInstallDir)' != '' and Exists('$(VCToolsInstallDir)bin\HostX86\x86\cl.exe')">$(VCToolsInstallDir)bin\HostX86\x86</_OpMidlClDir>
+      <_OpMidlClDir Condition="'$(_OpMidlClDir)' == '' and '$(Platform)' == 'x64' and '$(VC_ExecutablePath_x64)' != ''">$(VC_ExecutablePath_x64)</_OpMidlClDir>
+      <_OpMidlClDir Condition="'$(_OpMidlClDir)' == '' and '$(Platform)' != 'x64' and '$(VC_ExecutablePath_x86)' != ''">$(VC_ExecutablePath_x86)</_OpMidlClDir>
+      <!-- 最终兜底：x86 host 工具缺失时仍用 x64 host（cl 只做预处理，arch 不影响产物），不硬编码到具体盘符 -->
       <_OpMidlClDir Condition="'$(_OpMidlClDir)' == '' and '$(VC_ExecutablePath_x64)' != ''">$(VC_ExecutablePath_x64)</_OpMidlClDir>
       <_OpMidlIncludePath Condition="'$(VC_IncludePath)' != ''">$(VC_IncludePath);$(WindowsSDK_IncludePath)</_OpMidlIncludePath>
       <_OpMidlIncludePath Condition="'$(_OpMidlIncludePath)' == ''">$(IncludePath)</_OpMidlIncludePath>

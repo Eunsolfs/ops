@@ -10,15 +10,19 @@ OP is a Windows desktop automation COM plugin written in C++17. It provides scre
 
 ```powershell
 # One-time third-party dependencies (BlackBone / OpenCV / MinHook)
-pwsh -File scripts\bootstrap-deps.ps1
+pwsh -File scripts\bootstrap-deps.ps1                 # x64
+pwsh -File scripts\bootstrap-deps.ps1 -Arch x86       # x86
 
-# Build the whole solution (x64 Release)
+# Build the whole solution (Release)
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
     op.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m
+
+& 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
+    op.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /m
 ```
 
-Artifacts: `bin/x64/op_x64.dll`, `bin/x64/op_c_api_x64.dll`, `bin/x64/tools.dll`,
-`bin/x64/cpp_call.exe`, `lib/x64/libop.lib`, `lib/x64/op_c_api_x64.lib`.
+Artifacts: `bin/{x64|x86}/op_{x64|x86}.dll`, `op_c_api_{x64|x86}.dll`, `tools.dll`,
+`cpp_call.exe`, `op_test.exe`, `lib/{x64|x86}/libop.lib`, `op_c_api_{x64|x86}.lib`.
 
 Dependencies live in `build/_deps/{BlackBone,opencv}` and the vcpkg root. The projects set
 `VcpkgEnabled=false` because a global `vcpkg integrate install` would inject the dynamic
@@ -27,9 +31,20 @@ Dependencies live in `build/_deps/{BlackBone,opencv}` and the vcpkg root. The pr
 
 ## Test commands
 
-The GoogleTest sources under `tests/` are kept, but there is no `tests.vcxproj` yet
-(`tests/CMakeLists.txt` was removed with CMake). The current smoke test is
-`examples/cpp_call`:
+`tests/op_test.vcxproj` builds the GoogleTest suite (x64 and Win32):
+
+```powershell
+& 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
+    tests\op_test.vcxproj /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m
+
+.\bin\x64\op_test.exe --gtest_list_tests
+.\bin\x64\op_test.exe --gtest_filter="UtilsTest.*:HandleCompatTest.*:AlgorithmTest.*:OpTest.*"
+```
+
+OCR test cases need an external OCR service (`OP_OCR_URL`); they SKIP/FAIL without it.
+Only Release is validated; Debug requires a Debug build of the OpenCV static libraries.
+
+The pure C++ smoke test is `examples/cpp_call`:
 
 ```powershell
 .\bin\x64\cpp_call.exe
@@ -58,11 +73,11 @@ libop/image/             — Image search (ImageSearchAlgorithms), image process
                            OCR via HTTP service (HttpOcrService, singleton with mutex)
 libop/window/            — Window, process, clipboard, command, injection, and layout services
 libop/algorithm/         — A* pathfinding (AStar.hpp)
-tests/                   — GoogleTest sources (kept; no tests.vcxproj yet)
+tests/                   — GoogleTest suite (tests/op_test.vcxproj; x64 + Win32)
 tools/                   — EasyCom DLL (COM helper, separate from the main plugin)
 examples/cpp_call/       — Pure C++ static-link example / smoke test
 3rd_party/               — Kiero source + pre-built libs for some architectures
-op.sln                   — Native VS2022 solution (libop / op_x64 / op_c_api_x64 / tools / cpp_call)
+op.sln                   — Native VS2022 solution (libop / op_x64 / op_c_api_x64 / tools / cpp_call / op_test)
 vs/                      — op.common.props (compile/link/MIDL), op.deps.props (paths), op.sources.props
 scripts/                 — bootstrap-deps.ps1 (BlackBone / OpenCV / MinHook)
 doc/cpp-only/            — Refactor notes, API changes, progress, native VS build guide
@@ -80,7 +95,9 @@ doc/cpp-only/            — Refactor notes, API changes, progress, native VS bu
 ## Platform constraints
 
 - **Windows only**. Compiles with MSVC v143 (VS2022), `/MT` static CRT, `/EHa` exception handling.
-- The native solution currently builds x64 only. x86 requires x86 versions of BlackBone,
-  OpenCV, and the vcpkg static libraries, plus Win32 configurations in the projects.
-- Output directories are centralized in `vs/op.deps.props` (`bin/x64`, `lib/x64`,
-  `build/vs/x64/<Config>`).
+- The native solution builds both x64 and Win32/x86. Use
+  `scripts/bootstrap-deps.ps1 -Arch x86` for the x86 dependencies.
+- Output directories are centralized in `vs/op.deps.props`
+  (`bin/{x64|x86}`, `lib/{x64|x86}`, `build/vs/{x64|Win32}/<Config>`).
+- Only Release is validated. Debug requires Debug builds of the OpenCV static libraries
+  (`cv::debug_build_guard` otherwise causes LNK2019).

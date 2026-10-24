@@ -4,6 +4,7 @@
     op_c_api_x64：给 Twinkle 用的 C API DLL。
     与旧 CMake 的 op_c_api 目标等价：只编译 c_api/op_c_api.cpp + hook/HookExport.cpp，
     然后静态链接 libop.lib（以及 libop 需要的 OpenCV / BlackBone / MinHook）。
+    x64 配置输出 op_c_api_x64.dll；Win32 配置输出 op_c_api_x86.dll（TargetName 按架构分流）。
   -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -13,6 +14,14 @@
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
     </ProjectConfiguration>
   </ItemGroup>
 
@@ -61,12 +70,27 @@
   <PropertyGroup>
     <OutDir>$(OpOutDirBin)</OutDir>
     <IntDir>$(OpIntDirRoot)op_c_api_x64\</IntDir>
-    <TargetName>op_c_api_x64</TargetName>
+    <!-- 架构命名：x64 -> op_c_api_x64，Win32 -> op_c_api_x86（与 Twinkle 现有文件名一致） -->
+    <TargetName Condition="'$(Platform)' == 'x64'">op_c_api_x64</TargetName>
+    <TargetName Condition="'$(Platform)' != 'x64'">op_c_api_x86</TargetName>
     <TargetExt>.dll</TargetExt>
-    <ImportLibrary>$(OpOutDirLib)op_c_api_x64.lib</ImportLibrary>
+    <ImportLibrary Condition="'$(Platform)' == 'x64'">$(OpOutDirLib)op_c_api_x64.lib</ImportLibrary>
+    <ImportLibrary Condition="'$(Platform)' != 'x64'">$(OpOutDirLib)op_c_api_x86.lib</ImportLibrary>
     <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
     <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
   </PropertyGroup>
+
+  <!--
+    PostBuild（本 Fork 的本地集成步骤）：若 Twinkle.Background\lib 存在，
+    把当前 DLL 与导入库同步过去。x64 复制 op_c_api_x64.dll，Win32 复制 op_c_api_x86.dll，
+    导入库跟随 TargetName。目录不存在时（独立 clone ops）整段跳过，无任何副作用。
+  -->
+  <ItemDefinitionGroup Label="OpTwinkleSync">
+    <PostBuildEvent>
+      <Command>if exist "$(OpTwinkleLibDir)" (copy /Y "$(TargetPath)" "$(OpTwinkleLibDir)" &gt;nul &amp;&amp; copy /Y "$(OpOutDirLib)$(TargetName).lib" "$(OpTwinkleLibDir)" &gt;nul)</Command>
+      <Message>[OP] Twinkle 同步（若目录存在）：$(TargetFileName) + $(TargetName).lib -&gt; $(OpTwinkleLibDir)</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
 
   <ItemDefinitionGroup Label="OpCApiCompile">
     <ClCompile>

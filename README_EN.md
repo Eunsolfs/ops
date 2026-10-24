@@ -8,7 +8,7 @@
 
 OP (Operator & Open) is a Windows automation plugin. It brings window discovery, background binding, screen capture, mouse and keyboard input, color and image search, OCR, OpenCV, YOLO HTTP detection, and process memory access into one set of APIs for desktop automation programs.
 
-The core is written in C++. It exposes a C API and a COM interface; the native VS solution builds x64 (x86 requires extra dependency setup). Capture backends cover normal windows, GDI, DXGI, WGC, DirectX hooks, OpenGL, and OpenGL ES. Image templates can be loaded from files or from memory, which makes it easier to ship resources inside your own program.
+The core is written in C++. It exposes a C API and a COM interface; the native VS solution builds both x64 and x86. Capture backends cover normal windows, GDI, DXGI, WGC, DirectX hooks, OpenGL, and OpenGL ES. Image templates can be loaded from files or from memory, which makes it easier to ship resources inside your own program.
 
 > This fork removes bitmap-font OCR (local/memory dictionaries) and the Python, Go, and SWIG bindings. OCR is HTTP service only, and the project builds with a native Visual Studio solution.
 
@@ -105,7 +105,7 @@ pwsh -File scripts\bootstrap-deps.ps1
 The script installs `minhook` and `directx-headers` for `x64-windows-static`, clones and
 builds BlackBone (`/MT`), and downloads/builds OpenCV 5.0.0 static libraries (`/MT`,
 minimal module set). Artifacts go to `build\_deps`; existing builds are reused unless
-`-Force` is passed.
+`-Force` is passed. Use `-Arch x86` (or `-Arch both`) to prepare the x86 dependencies.
 
 > If this machine has run `vcpkg integrate install`, the script disables vcpkg integration
 > while building OpenCV. Otherwise vcpkg's OpenCV4/protobuf headers pollute the OpenCV 5
@@ -114,34 +114,40 @@ minimal module set). Artifacts go to `build\_deps`; existing builds are reused u
 
 ### 2. Build
 
-Open `op.sln` in VS2022 and build `Release|x64`, or use the command line:
+Open `op.sln` in VS2022 and build `Release|x64` or `Release|Win32`, or use the command line:
 
 ```powershell
+# x64
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
     op.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m
+
+# x86
+& 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
+    op.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /m
 ```
 
 Artifacts:
 
 ```text
-bin/x64/op_x64.dll
-bin/x64/op_c_api_x64.dll
-bin/x64/tools.dll
-bin/x64/cpp_call.exe          # pure C++ example
-lib/x64/libop.lib
-lib/x64/op_c_api_x64.lib
+bin/x64/op_x64.dll              bin/x86/op_x86.dll
+bin/x64/op_c_api_x64.dll        bin/x86/op_c_api_x86.dll
+bin/x64/tools.dll               bin/x86/tools.dll
+bin/x64/cpp_call.exe            bin/x86/cpp_call.exe
+bin/x64/op_test.exe             bin/x86/op_test.exe
+lib/x64/libop.lib               lib/x86/libop.lib
+lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
-The solution currently configures x64 only. x86 requires x86 builds of BlackBone, OpenCV,
-and the vcpkg static libraries, plus Win32 configurations in the projects.
+x86 dependencies: `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`. Only Release is
+currently validated; Debug requires a Debug build of the OpenCV static libraries.
 
 ### 3. Pure C++ usage
 
 - Static library: include `include/libop.h`, define `U_STATIC_IMPLEMENTATION`, and link
-  `lib/x64/libop.lib` plus the OpenCV / BlackBone / MinHook static libraries. See
-  [`examples/cpp_call`](examples/cpp_call).
-- C API: include `include/op_c_api.h`, link `lib/x64/op_c_api_x64.lib`, and load
-  `op_c_api_x64.dll` at runtime.
+  `lib/x64/libop.lib` (or `lib/x86/libop.lib`) plus the OpenCV / BlackBone / MinHook static
+  libraries. See [`examples/cpp_call`](examples/cpp_call).
+- C API: include `include/op_c_api.h`, link `lib/x64/op_c_api_x64.lib` (or
+  `lib/x86/op_c_api_x86.lib`), and load the matching DLL at runtime.
 
 ```cpp
 #include <libop.h>

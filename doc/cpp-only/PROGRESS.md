@@ -215,6 +215,41 @@ OpenCV   = 5.0.0
 - `ColorSelfTest.vcxproj` Release|x64：0 警告 / 0 错误。
 - 新版 DLL 默认不改宿主 DPI，Twinkle 无需改代码。
 
+### 01:10 x86 依赖
+
+- x86-deps 完成 `scripts/bootstrap-deps.ps1 -Arch x64|x86|both`，实际构建 x86：
+  - vcpkg x86-windows-static：minhook.x32.lib / directx-headers
+  - BlackBone Win32：`build/_deps/BlackBone/build/vs2022-Win32/BlackBone/Release/BlackBone.lib`
+  - OpenCV 5.0.0 Win32：`build/_deps/opencv/install/vs2022-Win32/x86/vc17/staticlib`
+- 耗时约 11.5 分钟；磁盘 +1.3 GB。
+- 关键坑：x86 MinHook 库名是 `minhook.x32.lib`，不是 `minhook.x86.lib`。
+
+### 01:15 x86 工程配置与全量构建
+
+- x86-config 给 5 个 vcxproj 加 Win32 配置；`vs/op.deps.props` 按 `OpArchDir` 输出
+  `bin/{x64,x86}`、`lib/{x64,x86}`；MIDL Win32 用 `HostX86\x86`。
+- `op.sln` Release|Win32 `/t:Rebuild`：**0 警告 / 0 错误**（含 op_test）。
+- 产物 `bin/x86/op_x86.dll`、`op_c_api_x86.dll`、`tools.dll`、`cpp_call.exe`、`op_test.exe`。
+- PostBuild 把 x64/x86 的 DLL/LIB 同步到 `modules/Twinkle.Background/lib`。
+
+### 01:21 tests 工程
+
+- 新增 `tests/op_test.vcxproj`（Debug/Release × x64/Win32），GUID 1006，加入 `op.sln`。
+- 13 suites / 132 cases；x64 核心集 10/10 PASS，扩展集 16/16 PASS；
+  x86 核心集 9 PASS + 1 SKIP，扩展集 15 PASS + 1 SKIP。
+- OCR 用例需要外部服务，未纳入；WGC/窗口/DX 注入类需真机环境。
+- `tests/opencv_test.cpp` 修 9 处 C4244（double → RecordProperty）。
+- Debug 全仓库链接受限：OpenCV 只有 Release/MT，Debug 需 Debug 版 OpenCV。
+
+### 01:22 Twinkle.sln 集成
+
+- `Twinkle.sln` 新增 OP 解决方案文件夹，加入 libop / op_x64 / op_c_api_x64 / tools /
+  cpp_call；配置映射齐全，Win32→x64 桥接。
+- 7 个 Twinkle 工程加 solution 级依赖 → op_c_api_x64。
+- 验证：`/t:"OP\op_c_api_x64"` 与 `/t:Twinkle_CLI` Release|x64 均 PASS；
+  `modules/Twinkle.Background/lib` 与 external/ops 产物 hash 一致。
+- 修复 HEAD 中 EmulatorProbe/DecoupleTest 各缺一个 `EndProject` 的旧结构问题。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
@@ -227,3 +262,7 @@ OpenCV   = 5.0.0
 - [x] DPI 开关 + 探针验证
 - [x] Twinkle 无需改代码：新版 DLL 默认不改宿主 DPI
 - [x] 提交 DPI 变更到 ops 分支，并同步新 DLL/LIB/头文件到 Twinkle
+- [x] x86 依赖 + Win32 工程配置 + 全量构建
+- [x] tests/op_test.vcxproj + x64/x86 用例
+- [x] Twinkle.sln 加入 OP 工程与构建依赖
+- [x] 提交 tests/x86/Twinkle.sln 变更（Lead）

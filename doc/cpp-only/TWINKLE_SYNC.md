@@ -71,12 +71,22 @@ Copy-Item external\ops\bin\x64\op_x64.dll        modules\Twinkle.Background\lib\
 
 ## 4. x86 说明
 
-本次只构建了 x64。`modules\Twinkle.Background\lib` 里旧的 `op_c_api_x86.dll` /
-`op_c_api_x86.lib` / `op_x86.dll` 未替换；如果 Twinkle 需要 x86：
+x86 已完整配置并构建（`op.sln` 的 `Release|Win32`）：
 
-1. 给 ops 的 VS 工程补 Win32 配置；
-2. 准备 x86 的 BlackBone / OpenCV / vcpkg 依赖；
-3. 重新构建 x86 的 DLL/LIB 后再同步。
+- 依赖：`pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`
+- 产物：`bin\x86\op_x86.dll`、`op_c_api_x86.dll`、`tools.dll`、`cpp_call.exe`、
+  `op_test.exe`；`lib\x86\libop.lib`、`op_c_api_x86.lib`
+- PostBuild 已把 x86 的 `op_x86.dll/.lib`、`op_c_api_x86.dll/.lib` 同步到
+  `modules\Twinkle.Background\lib`
+
+注意：Twinkle 主解决方案的 Win32 配置本身不完整（`build\Twinkle.sdk.props` 硬编码
+`op_c_api_x64.lib`，且很多工程 Win32→x64）。本次 x86 只在 `op.sln` 验证；在
+`Twinkle.sln` 里 OP 工程的 Win32 目前仍映射到 x64。若要让 Twinkle 真正 x86，需要：
+
+1. 把 `Twinkle.sdk.props` 的 `AdditionalDependencies` 按 `$(Platform)` 切到
+   `op_c_api_x86.lib`；
+2. 把所有 Twinkle 工程的 Win32 映射从 x64 改成 Win32；
+3. 重新验证整条链路。
 
 ## 5. 已验证
 
@@ -114,3 +124,33 @@ OpSetProcessDpiAware(1);   // 必须早于任何 OpCreate
 
 注意：DPI 开关只解决“加载顺序决定坐标系”；native `1136x640` 与 GDI/OP
 `1136x676` 的尺寸差仍需在 `CompositeController` 做坐标归一。
+
+## 8. 加入 Twinkle.sln（2026-10-25）
+
+`Twinkle.sln` 新增解决方案文件夹 **OP**，包含：
+
+- `libop`
+- `op_x64`
+- `op_c_api_x64`
+- `tools`
+- `cpp_call`
+- Solution Items：`external\ops\op.sln`、`external\ops\doc\cpp-only\BUILD_VS.md`（只读入口）
+
+配置映射：5 个 OP 工程补齐 Debug/Release × Win32/x64；**Win32 目前映射到 x64**
+（Twinkle 主解决方案的 Win32 本身不完整，见第 4 节）。solution 级依赖已加到
+`Twinkle.Background`、`Twinkle.CLI`、`PipelineTest`、`ColorSelfTest`、
+`AutomationRegistryTest`、`DecoupleTest`、`EmulatorProbe` → `op_c_api_x64`。
+
+命令行 target 命名注意（MSBuild 17.11）：
+
+```powershell
+# 正确：解决方案文件夹限定 + 点转下划线
+MSBuild Twinkle.sln /t:"OP\op_c_api_x64" /p:Configuration=Release /p:Platform=x64 /m
+MSBuild Twinkle.sln /t:Twinkle_CLI /p:Configuration=Release /p:Platform=x64 /m
+```
+
+`/t:op_c_api_x64`（没有 OP\ 前缀）和 `/t:Twinkle.CLI`（target 名不能带点）都会失败。
+`Bench` / `Soak` / `WindowProbe` 不在 `Twinkle.sln` 中，本次没有为了加依赖而新增它们。
+
+构建 `OP\op_c_api_x64` 后，其 PostBuild 会把 DLL/LIB 同步到
+`modules\Twinkle.Background\lib`（已实测 hash 一致）。

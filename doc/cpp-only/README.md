@@ -4,7 +4,7 @@
 > 仓库：`Y:\sourcecode\cpp\Twinkle\external\ops`（fork: Eunsolfs/ops）
 > 起点 commit：`d00f837`（0.4.8.3）
 > 开始时间：2026-10-25
-> 状态：代码改造与 x64 构建已完成，正在做 Twinkle 集成与提交收尾。
+> 状态：x64/x86 构建、tests/op_test、Twinkle.sln 集成均已完成并提交。
 
 本目录记录本次针对 OP 插件的大改造：分析过程、范围决策、API 变更、构建方式、进度与验证结果。
 后续接手的人先读本文件，再看：

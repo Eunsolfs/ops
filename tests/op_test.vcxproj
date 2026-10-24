@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    op_test：原 CMake 的 GoogleTest 套件（见 d00f837:tests/CMakeLists.txt）的原生 VS 工程。
+
+    与旧 CMake 的 op_test 目标等价：
+      - 源：tests/*.cpp + libop/window/WindowLayout.cpp + libop/input/mouse/CursorShape.cpp
+            + libop/opencv/OpenCvHelpers.cpp + libop/opencv/TemplateMatcher.cpp
+            + op_x64 工程 MIDL 生成的 op_i.c（提供 IID/CLSID 等 GUID 定义）
+      - 链接：x64   -> op_x64.lib / op_c_api_x64.lib（DLL 导入库，运行期需要同名 DLL）
+              Win32 -> op_x86.lib / op_c_api_x86.lib
+              + gtest.lib（vcpkg <triplet>/lib/gtest.lib）
+              + dinput8.lib;dxguid.lib;dwmapi.lib
+              + 公共 props 里的 OpenCV 静态库 / BlackBone / MinHook（OpLinkHeavyDeps=true）
+      - 定义：_UNICODE;UNICODE;_CMAKE_BUILD
+              【不要】定义 U_STATIC_IMPLEMENTATION：测试链接的是 DLL 导入库，OP_API 必须是 dllimport
+      - 输出：x64 -> bin\x64\op_test.exe，Win32 -> bin\x86\op_test.exe（$(OpOutDirBin)，架构目录映射见 op.deps.props）
+
+    小知识（为何要重编几个 libop 源文件）：
+      WindowLayout / CursorShape / OpenCvHelpers / TemplateMatcher 里的函数不属于 OP_API 导出，
+      测试要直接调用它们的实现，因此与旧 CMake 一样在测试目标里重编一份（不进 DLL 的符号表，无冲突）。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1006}</ProjectGuid>
+    <RootNamespace>op_test</RootNamespace>
+    <ProjectName>op_test</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)' != 'Debug'">false</UseDebugLibraries>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!-- 测试会链接 OpenCV/BlackBone/MinHook（重编的 libop 源 + 公共 props），因此开依赖检查 -->
+    <OpCheckDependencies>true</OpCheckDependencies>
+    <OpBuildsAndLinksOpenCv>true</OpBuildsAndLinksOpenCv>
+    <OpLinkHeavyDeps>true</OpLinkHeavyDeps>
+    <!-- op_i.c/op_i.h 由 op_x64 工程的 MIDL 步骤生成，本工程不跑 MIDL -->
+    <OpGenerateComIdl>false</OpGenerateComIdl>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MSBuildThisFileDirectory)..\vs\op.common.props" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <!--
+    op_x64 的 IntDir 里放着 MIDL 生成的 op_i.c / op_i.h。
+    用 $(OpIntDirRoot)op_x64\ 而不是 $(SolutionDir)build\...：既等价于旧 CMake 的
+    OP_COM_GENERATED_DIR，又能在「直接用 msbuild 构工程」和「从 op.sln 构建」两种方式下都对。
+  -->
+  <PropertyGroup Label="OpTestComGenerated">
+    <OpTestComGeneratedDir>$(OpIntDirRoot)op_x64\</OpTestComGeneratedDir>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OutDir>$(OpOutDirBin)</OutDir>
+    <IntDir>$(OpIntDirRoot)op_test\</IntDir>
+    <TargetName>op_test</TargetName>
+    <TargetExt>.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
+    <!-- 直接在 VS 里 F5 时以 exe 所在目录为工作目录（测试会写临时 BMP 等） -->
+    <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Label="OpTestCompile">
+    <ClCompile>
+      <!-- _CMAKE_BUILD 沿用旧 CMake 目标的定义；不要 U_STATIC_IMPLEMENTATION（链接的是 DLL 导入库） -->
+      <PreprocessorDefinitions>_CMAKE_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!--
+        追加：tests 目录（"test_support.h"）与 op_x64 的 IntDir（op_i.h）。
+        注意：这里【不要】再追加 $(OpVcpkgStaticDir)\include —— 它会排到公共 props 的
+        $(OpOpenCvIncludeDir) 之前（%(AdditionalIncludeDirectories) 是把已有的放在后面），
+        导致 <opencv2/*.hpp> 解析到 vcpkg 里的 OpenCV4 头，与 OpenCV5 头混用报 C2572/C2556。
+        gtest 头、OpenCV/BlackBone/vcpkg include 均已由 op.common.props 提供。
+      -->
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory);$(OpTestComGeneratedDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <!-- 测试有 int main(...)，必须是控制台程序（公共 props 默认是 Windows 子系统） -->
+      <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>$(OpLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!--
+        导入库按架构分流（与 op_x64 / op_c_api_x64 工程的 TargetName 一致）：
+          x64   -> op_x64.lib / op_c_api_x64.lib
+          Win32 -> op_x86.lib / op_c_api_x86.lib
+        运行期需要同名 DLL 在 exe 同目录（见下方 OpTestCopyRuntimeDlls）。
+        gtest.lib 来自 vcpkg <triplet>/lib（x64-windows-static 或 x86-windows-static，/MT 与主工程一致）。
+        dinput8/dxguid/dwmapi 与旧 CMake 的 target_link_libraries 保持一致。
+      -->
+      <AdditionalDependencies Condition="'$(Platform)' == 'x64'">op_x64.lib;op_c_api_x64.lib;$(OpVcpkgStaticDir)\lib\gtest.lib;dinput8.lib;dxguid.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="'$(Platform)' != 'x64'">op_x86.lib;op_c_api_x86.lib;$(OpVcpkgStaticDir)\lib\gtest.lib;dinput8.lib;dxguid.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Label="OpTestSources">
+    <ClCompile Include="$(MSBuildThisFileDirectory)main.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)test_support.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)handle_compat_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)op_algorithm_windows_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)mouse_keyboard_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)image_color_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)wgc_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ocr_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)yolo_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)utils_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)opencv_test.cpp" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpTestLocalLibopSources">
+    <!-- 这些实现没有 OP_API 导出，测试直接调用，因此与旧 CMake 一样在测试目标里重编 -->
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowLayout.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\mouse\CursorShape.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\opencv\OpenCvHelpers.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\opencv\TemplateMatcher.cpp" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpTestComGeneratedSources">
+    <!-- MIDL 生成的 GUID 定义（由 op_x64 工程的 OpGenerateComIdl target 产出） -->
+    <ClCompile Include="$(OpTestComGeneratedDir)op_i.c">
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup Label="OpTestHeaders">
+    <ClInclude Include="$(MSBuildThisFileDirectory)test_support.h" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpProjectRefs">
+    <!-- op_x64 先构建：保证 1) MIDL 生成 op_i.c/op_i.h 2) op_x64.dll / op_x86.dll 在运行目录 -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\op_x64.vcxproj">
+      <Project>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1002}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <!-- op_c_api_x64 先构建：保证 op_c_api_x64.dll / op_c_api_x86.dll（op_c_api.h 的 dllimport 目标）就位 -->
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\op_c_api_x64.vcxproj">
+      <Project>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1003}</Project>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+
+  <!--
+    运行期依赖（导入库对应的 DLL）：
+      x64   -> op_x64.dll / op_c_api_x64.dll
+      Win32 -> op_x86.dll / op_c_api_x86.dll
+    默认 OutDir == $(OpOutDirBin)（DLL 的本体输出目录），DLL 已就位，无需复制；
+    若被 /p:OutDir=... 改到别处（或在 VS 里改了输出目录），则补拷一份，保证 op_test.exe 能直接跑。
+  -->
+  <Target Name="OpTestCopyRuntimeDlls" AfterTargets="Build" Condition="'$(OpOutDirBin)' != '$(OutDir)'">
+    <Message Importance="high" Text="[OP] 复制运行期依赖 DLL -&gt; $(OutDir)" />
+    <Copy Condition="'$(Platform)' == 'x64'"
+          SourceFiles="$(OpOutDirBin)op_x64.dll;$(OpOutDirBin)op_c_api_x64.dll"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+    <Copy Condition="'$(Platform)' != 'x64'"
+          SourceFiles="$(OpOutDirBin)op_x86.dll;$(OpOutDirBin)op_c_api_x86.dll"
+          DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

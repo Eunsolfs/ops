@@ -8,7 +8,7 @@
 
 OP（Operator & Open）是一个面向 Windows 的自动化插件。它把窗口查找、后台绑定、截图、键鼠输入、找色找图、OCR、OpenCV、YOLO HTTP 检测和进程内存读写放在同一套接口里，方便桌面自动化程序直接调用。
 
-核心代码使用 C++ 实现，对外提供 C API 和 COM 两种调用方式；当前原生 VS 工程提供 x64 构建（x86 需自行准备依赖并补 Win32 配置）。截图后端覆盖普通窗口、GDI、DXGI、WGC、DirectX Hook、OpenGL 和 OpenGL ES；图片模板可以从本地文件加载，也可以从内存加载，适合把资源随程序一起打包。
+核心代码使用 C++ 实现，对外提供 C API 和 COM 两种调用方式；原生 VS 工程同时提供 x64 与 x86 构建。截图后端覆盖普通窗口、GDI、DXGI、WGC、DirectX Hook、OpenGL 和 OpenGL ES；图片模板可以从本地文件加载，也可以从内存加载，适合把资源随程序一起打包。
 
 OCR 走外部 HTTP 服务：OP 负责截图、读图和请求封装，识别由独立服务 [op_ocr_engine](https://github.com/WallBreaker2/op_ocr_engine) 完成，可接入 Tesseract、PaddleOCR 等后端。
 
@@ -116,34 +116,40 @@ pwsh -File scripts\bootstrap-deps.ps1
 
 ### 2. 构建
 
-用 VS2022 打开仓库根目录的 `op.sln`，选择 `Release|x64` 构建；或使用命令行：
+用 VS2022 打开仓库根目录的 `op.sln`，选择 `Release|x64` 或 `Release|Win32` 构建；或使用命令行：
 
 ```powershell
+# x64
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
     op.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m
+
+# x86
+& 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
+    op.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /m
 ```
 
 产物：
 
 ```text
-bin/x64/op_x64.dll
-bin/x64/op_c_api_x64.dll
-bin/x64/tools.dll
-bin/x64/cpp_call.exe          # 纯 C++ 调用示例
-lib/x64/libop.lib
-lib/x64/op_c_api_x64.lib
+bin/x64/op_x64.dll              bin/x86/op_x86.dll
+bin/x64/op_c_api_x64.dll        bin/x86/op_c_api_x86.dll
+bin/x64/tools.dll               bin/x86/tools.dll
+bin/x64/cpp_call.exe            bin/x86/cpp_call.exe
+bin/x64/op_test.exe             bin/x86/op_test.exe
+lib/x64/libop.lib               lib/x86/libop.lib
+lib/x64/op_c_api_x64.lib        lib/x86/op_c_api_x86.lib
 ```
 
-当前解决方案只配置了 x64；x86 需要自行准备 x86 的 BlackBone / OpenCV / vcpkg 依赖，
-并在工程中添加 Win32 配置。
+x86 依赖用 `pwsh -File scripts\bootstrap-deps.ps1 -Arch x86` 准备。当前只验证
+Release；Debug 需要额外构建 Debug 版 OpenCV 静态库。
 
 ### 3. 纯 C++ 调用
 
 - 直接链接静态库：包含 `include/libop.h`，定义 `U_STATIC_IMPLEMENTATION`，链接
-  `lib/x64/libop.lib` 及 OpenCV / BlackBone / MinHook 静态库。示例见
-  [`examples/cpp_call`](examples/cpp_call)。
-- 或使用 C API：包含 `include/op_c_api.h`，链接 `lib/x64/op_c_api_x64.lib`，运行期
-  加载 `op_c_api_x64.dll`。
+  `lib/x64/libop.lib`（或 `lib/x86/libop.lib`）及 OpenCV / BlackBone / MinHook 静态库。
+  示例见 [`examples/cpp_call`](examples/cpp_call)。
+- 或使用 C API：包含 `include/op_c_api.h`，链接 `lib/x64/op_c_api_x64.lib`（或
+  `lib/x86/op_c_api_x86.lib`），运行期加载对应 DLL。
 
 ```cpp
 #include <libop.h>

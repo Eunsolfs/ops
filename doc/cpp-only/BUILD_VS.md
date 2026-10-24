@@ -94,20 +94,33 @@ OpenCV4 的 `opencv_modules.hpp` / `dnn.hpp`，于是 `HAVE_OPENCV_DNN` 被旧�
 ```powershell
 & 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
     op.sln /t:Rebuild /p:Configuration=Release /p:Platform=x64 /m
+
+# x86（Win32）
+& 'Y:\Microsoft Visual Studio\2022\MSBuild\Current\Bin\MSBuild.exe' `
+    op.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /m
 ```
 
 增量构建去掉 `/t:Rebuild` 即可。MIDL 是自定义 target，`op.idl` 变化或 `op.tlb`
-丢失时会自动重新生成。
+丢失时会自动重新生成。x86 的 MIDL 使用 `HostX86\x86` 的 cl host。
 
 ### 4.3 产物
 
 ```text
 bin/x64/op_x64.dll           COM 插件 + Hook 导出（DX Hook 注入载荷）
-bin/x64/op_c_api_x64.dll     C API（Twinkle 实际使用的 DLL）
+bin/x64/op_c_api_x64.dll     C API
 bin/x64/tools.dll            EasyCom
 bin/x64/cpp_call.exe         纯 C++ 示例
+bin/x64/op_test.exe          GoogleTest 测试
 lib/x64/libop.lib            静态库（纯 C++ 直接调用）
-lib/x64/op_c_api_x64.lib      C API 导入库
+lib/x64/op_c_api_x64.lib     C API 导入库
+
+bin/x86/op_x86.dll           x86 COM 插件
+bin/x86/op_c_api_x86.dll     x86 C API
+bin/x86/tools.dll
+bin/x86/cpp_call.exe
+bin/x86/op_test.exe
+lib/x86/libop.lib
+lib/x86/op_c_api_x86.lib
 ```
 
 `op_c_api_x64.dll` 的导入表只有系统 DLL：OpenCV / BlackBone / MinHook 都是静态链接，
@@ -222,15 +235,17 @@ op_handle h = OpCreate();
 
 ## 8. 已知限制
 
-- **x86 未配置**：解决方案只有 x64。要支持 x86，需要：
-  1. 准备 x86 的 BlackBone、OpenCV、`x86-windows-static` 的 MinHook/DirectX-Headers；
-  2. 给 5 个 vcxproj 增加 `Win32` 配置；
-  3. 输出目录/依赖路径按 `$(Platform)` 分支（`op.deps.props` 已预留）。
-- **tests 工程未建**：`tests/` 源码保留，`tests/CMakeLists.txt` 已随 CMake 删除。
-  当前用 `examples/cpp_call` 做冒烟；需要回归测试时再补 `tests.vcxproj`（vcpkg static
-  里有 gtest）。
+- **Debug 配置**：OpenCV 目前只构建了 Release/MT 静态库；Debug 会切到
+  `cv::debug_build_guard` 命名空间，链接报 `LNK2019`。当前只验证 **Release|x64 /
+  Release|Win32**。需要 Debug 时得补一份 Debug 版 OpenCV（`opencv_*d.lib`），再调整
+  公共 props 的库名。
+- **x86 依赖**：已经可用；用 `pwsh -File scripts/bootstrap-deps.ps1 -Arch x86` 准备。
+  x86 的 MinHook 库名是 `minhook.x32.lib`（不是 `minhook.x86.lib`），已在
+  `vs/op.deps.props` 处理。
+- **tests 工程**：`tests/op_test.vcxproj` 已加入 `op.sln`，x64/x86 均可构建；
+  OCR 用例需要外部 OCR 服务（`OP_OCR_URL`），未启动时会 SKIP/FAIL，属环境依赖。
 - **CI 已删除**：`.github/workflows/ci.yml`、`wheels.yml` 已移除；如需 CI，按
-  `MSBuild op.sln` 重写。
+  `MSBuild op.sln /p:Platform=x64|Win32` 重写。
 
 ## 9. 删除的旧构建文件
 

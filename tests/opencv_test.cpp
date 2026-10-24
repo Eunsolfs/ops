@@ -12,6 +12,7 @@
 #include <functional>
 #include <fstream>
 #include <numeric>
+#include <sstream>
 #include <vector>
 
 #include <opencv2/imgcodecs.hpp>
@@ -94,9 +95,18 @@ long long MeasureMilliseconds(const std::function<bool()> &operation, bool &ok) 
     return elapsed.count();
 }
 
+// gtest 的 Test::RecordProperty 只有 std::string / int32_t / int64_t 三个重载，
+// 直接传 double 会隐式转成 int64_t（MSVC 报 C4244）。这里显式格式化成字符串，
+// 既保留小数精度，也让测试工程保持 0 警告。
+std::string FormatPropertyDouble(double value) {
+    std::ostringstream out;
+    out << value;
+    return out.str();
+}
+
 void RecordMeasuredMatch(const std::string &name, long long elapsed_ms, double score) {
     ::testing::Test::RecordProperty(name + "_elapsed_ms", elapsed_ms);
-    ::testing::Test::RecordProperty(name + "_score", score);
+    ::testing::Test::RecordProperty(name + "_score", FormatPropertyDouble(score));
 }
 
 struct BenchmarkStats {
@@ -125,7 +135,7 @@ BenchmarkStats BuildBenchmarkStats(std::vector<long long> samples) {
 void RecordBenchmarkStats(const std::string &name, const BenchmarkStats &stats) {
     ::testing::Test::RecordProperty(name + "_min_ms", stats.min_ms);
     ::testing::Test::RecordProperty(name + "_median_ms", stats.median_ms);
-    ::testing::Test::RecordProperty(name + "_avg_ms", stats.avg_ms);
+    ::testing::Test::RecordProperty(name + "_avg_ms", FormatPropertyDouble(stats.avg_ms));
     ::testing::Test::RecordProperty(name + "_p95_ms", stats.p95_ms);
 }
 
@@ -1649,7 +1659,7 @@ TEST(OpenCvTest, AllMatchingMethodsWorkOnGameSceneAssets) {
     ASSERT_TRUE(scene_ok);
     ExpectNearRect(scene_match, scene_case.template_rect, 1);
     RecordProperty("game_scene_match_elapsed_ms", scene_elapsed_ms);
-    RecordProperty("game_scene_score", scene_match.score);
+    RecordProperty("game_scene_score", FormatPropertyDouble(scene_match.score));
 
     const RealImageCase &coin_case = find_case(L"coin");
     ASSERT_TRUE(load_template(L"game_coin", coin_case));
@@ -1796,7 +1806,7 @@ TEST(OpenCvTest, AllMatchingMethodsWorkOnGameSceneAssets) {
     ASSERT_TRUE(shape_ok);
     ExpectNearRect(shape_match, shape_case.template_rect, 5);
     RecordProperty("game_shape_elapsed_ms", shape_elapsed_ms);
-    RecordProperty("game_shape_score", shape_match.score);
+    RecordProperty("game_shape_score", FormatPropertyDouble(shape_match.score));
 
     opcv::RemoveAllTemplates();
 }
@@ -1837,7 +1847,7 @@ TEST(OpenCvTest, HardRealImageCasesExposeMatchingBoundaries) {
     ASSERT_TRUE(scale_small_ok);
     ExpectNearRect(scale_small, cv::Rect(90, 450, 72, 72), 1);
     RecordProperty("hard_scale_auto_elapsed_ms", scale_small_elapsed_ms);
-    RecordProperty("hard_scale_auto_score", scale_small.score);
+    RecordProperty("hard_scale_auto_score", FormatPropertyDouble(scale_small.score));
 
     opcv::MatchResult scale_large;
     bool scale_large_ok = false;
@@ -1857,7 +1867,7 @@ TEST(OpenCvTest, HardRealImageCasesExposeMatchingBoundaries) {
     ASSERT_TRUE(scale_large_ok);
     ExpectNearRect(scale_large, cv::Rect(940, 390, 130, 130), 1);
     RecordProperty("hard_scale_135_elapsed_ms", scale_large_elapsed_ms);
-    RecordProperty("hard_scale_135_score", scale_large.score);
+    RecordProperty("hard_scale_135_score", FormatPropertyDouble(scale_large.score));
 
     opcv::MatchResult scale_auto_large;
     bool scale_auto_large_ok = false;
@@ -1877,7 +1887,7 @@ TEST(OpenCvTest, HardRealImageCasesExposeMatchingBoundaries) {
     ASSERT_TRUE(scale_auto_large_ok);
     ExpectNearRect(scale_auto_large, cv::Rect(947, 396, 120, 120), 2);
     RecordProperty("hard_scale_auto_large_elapsed_ms", scale_auto_large_elapsed_ms);
-    RecordProperty("hard_scale_auto_large_score", scale_auto_large.score);
+    RecordProperty("hard_scale_auto_large_score", FormatPropertyDouble(scale_auto_large.score));
 
     opcv::ImageHandle brightness_source;
     ASSERT_TRUE(load_image(L"opencv_hard_brightness_source.png", brightness_source));
@@ -1901,7 +1911,7 @@ TEST(OpenCvTest, HardRealImageCasesExposeMatchingBoundaries) {
     ASSERT_TRUE(brightness_ok);
     ExpectNearRect(brightness_match, cv::Rect(460, 430, 96, 96), 1);
     RecordProperty("hard_brightness_elapsed_ms", brightness_elapsed_ms);
-    RecordProperty("hard_brightness_score", brightness_match.score);
+    RecordProperty("hard_brightness_score", FormatPropertyDouble(brightness_match.score));
 
     opcv::ImageHandle repeated_source;
     ASSERT_TRUE(load_image(L"opencv_hard_repeated_source.png", repeated_source));
@@ -1980,7 +1990,7 @@ TEST(OpenCvTest, HardRealImageCasesExposeMatchingBoundaries) {
     EXPECT_NEAR(rotation_feature_match.x, 610, 24);
     EXPECT_NEAR(rotation_feature_match.y, 130, 24);
     RecordProperty("hard_rotation_feature_elapsed_ms", rotation_feature_elapsed_ms);
-    RecordProperty("hard_rotation_feature_score", rotation_feature_match.score);
+    RecordProperty("hard_rotation_feature_score", FormatPropertyDouble(rotation_feature_match.score));
 
     opcv::ImageHandle occlusion_source;
     ASSERT_TRUE(load_image(L"opencv_hard_occlusion_source.png", occlusion_source));

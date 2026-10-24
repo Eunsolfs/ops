@@ -9,9 +9,25 @@
   <PropertyGroup Label="OpRepoLayout">
     <OpRepoRoot Condition="'$(OpRepoRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</OpRepoRoot>
     <OpDepsRoot>$(OpRepoRoot)build\_deps\</OpDepsRoot>
-    <OpBinDir>$(OpRepoRoot)bin\x64\</OpBinDir>
-    <OpLibDir>$(OpRepoRoot)lib\x64\</OpLibDir>
+    <!--
+      架构目录映射（工程里不要硬编码 x64）：
+        x64   -> x64（bin\x64 / lib\x64）
+        Win32 -> x86（bin\x86 / lib\x86，Twinkle 侧同样使用 x86 命名）
+    -->
+    <OpArchDir Condition="'$(Platform)' == 'x64'">x64</OpArchDir>
+    <OpArchDir Condition="'$(OpArchDir)' == ''">x86</OpArchDir>
+    <OpBinDir>$(OpRepoRoot)bin\$(OpArchDir)\</OpBinDir>
+    <OpLibDir>$(OpRepoRoot)lib\$(OpArchDir)\</OpLibDir>
     <OpObjDir>$(OpRepoRoot)build\vs\$(Platform)\$(Configuration)\</OpObjDir>
+  </PropertyGroup>
+
+  <!--
+    本地 fork 集成路径：构建成功后把 DLL / 导入库同步到 Twinkle.Background\lib。
+    相对仓库根（external\ops\）需要上两级才到 Twinkle 根：ops -> external -> Twinkle。
+    目录不存在时（例如单独 clone ops 构建）PostBuild 自动跳过，不产生副作用。
+  -->
+  <PropertyGroup Label="OpTwinkleIntegration">
+    <OpTwinkleLibDir Condition="'$(OpTwinkleLibDir)' == ''">$(OpRepoRoot)..\..\modules\Twinkle.Background\lib\</OpTwinkleLibDir>
   </PropertyGroup>
 
   <!-- ============================ BlackBone ============================ -->
@@ -25,6 +41,7 @@
     <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-x64\src\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-x64\src\BlackBone\Release\BlackBone.lib</BlackBoneLib>
     <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' != 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib</BlackBoneLib>
     <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' != 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-Win32\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-Win32\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' != 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-Win32\src\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-Win32\src\BlackBone\Release\BlackBone.lib</BlackBoneLib>
     <!-- 兜底：迁移机器时若目录结构不同，请显式传 /p:BlackBoneLib=... -->
     <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64'">$(BlackBoneRoot)\build\vs2022-x64\BlackBone\Release\BlackBone.lib</BlackBoneLib>
     <BlackBoneLib Condition="'$(BlackBoneLib)' == ''">$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib</BlackBoneLib>
@@ -45,9 +62,16 @@
     <OpVcpkgTriplet Condition="'$(Platform)' != 'x64'">x86-windows-static</OpVcpkgTriplet>
     <OpVcpkgStaticDir>$(OpVcpkgRoot)\installed\$(OpVcpkgTriplet)</OpVcpkgStaticDir>
 
-    <OpMinHookLib Condition="'$(Platform)' == 'x64'">$(OpVcpkgStaticDir)\lib\minhook.x64.lib</OpMinHookLib>
-    <OpMinHookLib Condition="'$(Platform)' != 'x64'">$(OpVcpkgStaticDir)\lib\minhook.x86.lib</OpMinHookLib>
-    <OpMinHookLib Condition="!Exists('$(OpMinHookLib)')">$(OpVcpkgStaticDir)\lib\minhook.lib</OpMinHookLib>
+    <!--
+      vcpkg 社区 triplet 的 MinHook 库名不统一：x64 为 minhook.x64.lib，x86 实际为 minhook.x32.lib
+      （部分版本是 minhook.x86.lib 或 minhook.lib）。按存在性选择，兜底仍是预期路径，便于报错定位。
+    -->
+    <OpMinHookLib Condition="'$(Platform)' == 'x64' and Exists('$(OpVcpkgStaticDir)\lib\minhook.x64.lib')">$(OpVcpkgStaticDir)\lib\minhook.x64.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(OpMinHookLib)' == '' and '$(Platform)' != 'x64' and Exists('$(OpVcpkgStaticDir)\lib\minhook.x32.lib')">$(OpVcpkgStaticDir)\lib\minhook.x32.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(OpMinHookLib)' == '' and '$(Platform)' != 'x64' and Exists('$(OpVcpkgStaticDir)\lib\minhook.x86.lib')">$(OpVcpkgStaticDir)\lib\minhook.x86.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(OpMinHookLib)' == '' and Exists('$(OpVcpkgStaticDir)\lib\minhook.lib')">$(OpVcpkgStaticDir)\lib\minhook.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(OpMinHookLib)' == '' and '$(Platform)' == 'x64'">$(OpVcpkgStaticDir)\lib\minhook.x64.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(OpMinHookLib)' == ''">$(OpVcpkgStaticDir)\lib\minhook.x32.lib</OpMinHookLib>
   </PropertyGroup>
 
   <!-- ============================== OpenCV ============================= -->
@@ -57,10 +81,18 @@
     <OpOpenCvRoot Condition="'$(OpOpenCvRoot)' == ''">$(OpDepsRoot)opencv\install\vs2022-Win32</OpOpenCvRoot>
     <OpOpenCvIncludeDir>$(OpOpenCvRoot)\include</OpOpenCvIncludeDir>
 
-    <OpOpenCvLibDir Condition="Exists('$(OpOpenCvRoot)\$(Platform)\vc18\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc18\staticlib</OpOpenCvLibDir>
+    <!-- OpenCV install 目录内部按 x64 / x86 分架构（Win32 工具集产出的目录名是 x86） -->
+    <OpOpenCvArchDir Condition="'$(Platform)' == 'x64'">x64</OpOpenCvArchDir>
+    <OpOpenCvArchDir Condition="'$(OpOpenCvArchDir)' == ''">x86</OpOpenCvArchDir>
+
+    <OpOpenCvLibDir Condition="Exists('$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc18\staticlib')">$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc18\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc17\staticlib')">$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc17\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc16\staticlib')">$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc16\staticlib</OpOpenCvLibDir>
+    <!-- 兼容旧布局：某些安装目录直接用 $(Platform) 命名（vs2022-x64\x64 / vs2022-Win32\Win32） -->
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(Platform)\vc18\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc18\staticlib</OpOpenCvLibDir>
     <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(Platform)\vc17\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc17\staticlib</OpOpenCvLibDir>
     <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(Platform)\vc16\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc16\staticlib</OpOpenCvLibDir>
-    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == ''">$(OpOpenCvRoot)\$(Platform)\vc17\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == ''">$(OpOpenCvRoot)\$(OpOpenCvArchDir)\vc17\staticlib</OpOpenCvLibDir>
 
     <!-- OpenCV 5.0.0 的库名后缀（4.x 为 4xx）。与 libop 原先 CMake 的 OPENCV_LIB_SUFFIX 保持一致。 -->
     <OpOpenCvLibSuffix Condition="'$(OpOpenCvLibSuffix)' == ''">500</OpOpenCvLibSuffix>
