@@ -190,6 +190,31 @@ OpenCV   = 5.0.0
 - 提交（`slim/cpp-only-vs` HEAD）：`refactor: 精简为纯 C++ + 原生 VS 工程`
 - 79 个文件变更（+2,376 / -32,395），工作区干净。
 
+### 00:52 DPI 感知开关
+
+- 问题：`OpContext` 构造函数无条件 `::SetProcessDPIAware()`，使宿主进程转为 DPI 感知；
+  150% 下 OP 帧 1704x1014，而 MuMu/ADB native 是 1136x640，混用 provider 坐标差 1.5x。
+- 修复：
+  - 默认不再调用 `SetProcessDPIAware()`；
+  - 新增 `op::Op::SetProcessDpiAware(bool)` / `IsProcessDpiAware()`；
+  - 新增 C API `OpSetProcessDpiAware(int)` / `OpGetProcessDpiAware()`；
+  - 必须在第一次 `OpCreate` 之前调用；之后返回 0，不可撤销；
+  - `OpContext` 用 mutex 保证“配置 → 锁定 → 调用”原子化。
+- 探针验证：
+  - 默认 / 显式 0：`actual=0 (unaware)`；
+  - 显式 1 + OpCreate：`actual=1 (system-aware)`；
+  - OpCreate 后再设置：返回 0，状态不变。
+- 构建：`op.sln` Release|x64，0 warning / 0 error。
+- 文档：[DPI.md](DPI.md)；Twinkle 建议 + 坐标归一说明见 [TWINKLE_SYNC.md](TWINKLE_SYNC.md)。
+
+### 00:54 Twinkle 同步 + 编译（DPI 版）
+
+- 新 `op_c_api.h` / `op_c_api_x64.lib` / `op_c_api_x64.dll` / `op_x64.dll` 已再次同步到
+  `external/OP` 与 `modules/Twinkle.Background/lib`。
+- `Twinkle.Background.vcxproj` Release|x64：0 警告 / 0 错误。
+- `ColorSelfTest.vcxproj` Release|x64：0 警告 / 0 错误。
+- 新版 DLL 默认不改宿主 DPI，Twinkle 无需改代码。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
@@ -198,5 +223,7 @@ OpenCV   = 5.0.0
 - [x] 用新头文件/新 lib 重新编译 Twinkle.Background / ColorSelfTest，确认链接
 - [x] 更新 Twinkle `docs/` 中 2 处引用已删 API 的历史文档
 - [x] 提交 ops 分支 `slim/cpp-only-vs`（见 `git log`）
-- [ ] 按用户要求，全部处理完后移除 Twinkle 的临时分支 `slim/ops-cpp-only`
-      （需先决定 4 个文件的落地方式：提交并合并到 master / 留在 master 工作区 / 丢弃）
+- [x] Twinkle 临时分支 `slim/ops-cpp-only` 已合并到 master 并删除
+- [x] DPI 开关 + 探针验证
+- [x] Twinkle 无需改代码：新版 DLL 默认不改宿主 DPI
+- [x] 提交 DPI 变更到 ops 分支，并同步新 DLL/LIB/头文件到 Twinkle

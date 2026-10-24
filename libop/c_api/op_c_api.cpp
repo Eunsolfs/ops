@@ -165,6 +165,16 @@ void OP_CALL OpDestroy(op_handle handle) {
     delete handle;
 }
 
+// DPI awareness is process-wide and one-shot; it must be configured before the
+// first OpCreate. Calling it later returns 0 because the setting is locked.
+int OP_CALL OpSetProcessDpiAware(int enable) {
+    return op::Op::SetProcessDpiAware(enable != 0) ? 1 : 0;
+}
+
+int OP_CALL OpGetProcessDpiAware(void) {
+    return op::Op::IsProcessDpiAware() ? 1 : 0;
+}
+
 // Basic
 
 const wchar_t *OP_CALL OpVer(void) {

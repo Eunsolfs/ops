@@ -94,6 +94,13 @@ class OP_API Op {
 
     // 1.版本号Version
     std::wstring Ver();
+
+    // 进程级 DPI 感知设置。SetProcessDPIAware 是进程级、一次性的：
+    // 必须在第一次构造 Op / OpCreate 之前调用；创建过 Op 之后调用返回 false。
+    // 默认 false：OP 不修改宿主的 DPI 感知，由宿主通过 manifest / API 决定；
+    // true：第一次创建 Op 时调用 SetProcessDPIAware()，OP 截图/输入使用物理像素。
+    static bool SetProcessDpiAware(bool enable);
+    static bool IsProcessDpiAware();
     // 设置目录
     void SetPath(_In_ const wchar_t *path, _Out_ long *ret);
     // 获取目录

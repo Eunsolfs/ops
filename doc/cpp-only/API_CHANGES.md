@@ -203,3 +203,23 @@
 - 删除的 COM dispid 保留空洞（200/201、220-244），其余 id 不重排；旧客户端调用这些
   dispid 会得到 `DISP_E_MEMBERNOTFOUND`。
 - `libop/ocr/OcrService.*`（HTTP 客户端）保留；`TesseractOcr.*`（本地模型）删除。
+
+## 5. 新增 API（DPI 感知，2026-10-25）
+
+新增（C++ / C 两层，COM 不新增）：
+
+```cpp
+static bool op::Op::SetProcessDpiAware(bool enable);
+static bool op::Op::IsProcessDpiAware();
+```
+
+```c
+OP_C_API int OP_CALL OpSetProcessDpiAware(int enable);
+OP_C_API int OP_CALL OpGetProcessDpiAware(void);
+```
+
+- 进程级、一次性；必须在第一次 `OpCreate` / 构造 `op::Op` 之前调用。
+- 默认 `0`：不调用 `SetProcessDPIAware()`，不修改宿主 DPI 感知。
+- `1`：第一次创建 Op 时调用 `SetProcessDPIAware()`，OP 使用物理像素。
+- 创建过 Op 后再调用返回 `0`，无法撤销。
+- 详细说明见 [DPI.md](DPI.md)。

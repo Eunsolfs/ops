@@ -91,3 +91,26 @@ Copy-Item external\ops\bin\x64\op_x64.dll        modules\Twinkle.Background\lib\
 - `docs/23_OP_C_API更新.md` 的 OCR 列表已更新为 HTTP OCR / FindStr / FindLine。
 - `docs/_research/p1_colorfix_report.md` 中提到的 `OpGetDictCount` /
   `OpGetWordResultCount` 已加“历史记录”说明。
+
+## 7. DPI 感知（2026-10-25 补充）
+
+旧版 `OpCreate` 会无条件调用 `SetProcessDPIAware()`，把整个 Twinkle 进程改成
+系统 DPI 感知：OP 帧变成物理像素（150% 下 `1704x1014`），而 MuMu/ADB native 仍是
+`1136x640`，混用 provider 时坐标差 1.5 倍。
+
+现在 ops 默认 **不修改**宿主 DPI，因此 Twinkle **不需要改代码**：加载新版
+`op_c_api_x64.dll` 后，OP 不再把进程改成 DPI 感知，OP 帧与 MuMu/ADB native 一样
+是逻辑坐标（150% 下约 `1136x676`，而不是 `1704x1014`）。
+
+如果以后需要 OP 使用物理像素（例如想要更清晰的截图），必须在 **进程启动时、第一次
+`OpCreate` 之前**显式调用：
+
+```cpp
+OpSetProcessDpiAware(1);   // 必须早于任何 OpCreate
+```
+
+不要把 `OpSetProcessDpiAware(0)` 写进 `OPController` 构造函数：那会覆盖宿主在启动时
+的 opt-in。默认值已经是 0，宿主不调用即可。
+
+注意：DPI 开关只解决“加载顺序决定坐标系”；native `1136x640` 与 GDI/OP
+`1136x676` 的尺寸差仍需在 `CompositeController` 做坐标归一。

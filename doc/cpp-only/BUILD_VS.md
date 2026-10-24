@@ -204,6 +204,22 @@ WGC 需要 `windowsapp.lib` + `runtimeobject.lib`，已加在 `AdditionalDepende
 /p:BlackBoneRoot=... /p:BlackBoneLib=... /p:OpenCV_ROOT=... /p:OpVcpkgRoot=...
 ```
 
+### 7.7 DPI 感知
+
+旧版 `OpCreate` 会无条件 `SetProcessDPIAware()`，使整个宿主进程转为 DPI 感知，导致
+OP 帧是物理像素、其它 provider 是逻辑像素。现在默认不修改宿主 DPI：
+
+```c
+OpSetProcessDpiAware(0);   // 默认，可省略
+op_handle h = OpCreate();
+
+// 需要物理像素：
+OpSetProcessDpiAware(1);   // 必须在第一次 OpCreate 之前
+op_handle h = OpCreate();
+```
+
+详见 [DPI.md](DPI.md)。
+
 ## 8. 已知限制
 
 - **x86 未配置**：解决方案只有 x64。要支持 x86，需要：

@@ -34,6 +34,15 @@ typedef op_c_context *op_handle;
 OP_C_API op_handle OP_CALL OpCreate(void);
 OP_C_API void OP_CALL OpDestroy(op_handle handle);
 
+// Process-wide DPI awareness. SetProcessDPIAware is one-shot and process-wide:
+// it must be called before the first OpCreate; after that the setting is locked.
+// enable=1: call SetProcessDPIAware() when the first Op is created (physical pixels).
+// enable=0 (default): leave the host process DPI awareness untouched.
+// Returns 1 if accepted, 0 if an Op already exists.
+// OpGetProcessDpiAware returns this configured setting (0/1), not an OS query.
+OP_C_API int OP_CALL OpSetProcessDpiAware(int enable);
+OP_C_API int OP_CALL OpGetProcessDpiAware(void);
+
 // Basic
 OP_C_API const wchar_t *OP_CALL OpVer(void);
 OP_C_API int OP_CALL OpSetPath(op_handle handle, const wchar_t *path);

@@ -4,6 +4,7 @@
 
 #include <Windows.h>
 #include <filesystem>
+#include <mutex>
 #include <system_error>
 #include <vector>
 
@@ -29,9 +30,48 @@ std::wstring current_directory() {
 
 } // namespace
 
+namespace {
+// DPI 感知是进程级、一次性的：SetProcessDPIAware() 必须在创建任何窗口/Op 之前
+// 调用，且之后不可撤销。这里用 mutex 保护“配置 + 锁定”两个状态，避免多线程
+// 首次创建 Op 时把刚设置的值丢掉。
+std::mutex g_dpi_mutex;
+bool g_dpi_aware_enabled = false; // 默认不修改宿主进程的 DPI 感知
+bool g_dpi_aware_locked = false;
+} // namespace
+
+namespace op::internal {
+
+bool set_process_dpi_aware(bool enable) {
+    std::lock_guard<std::mutex> lock(g_dpi_mutex);
+    if (g_dpi_aware_locked) {
+        return false;
+    }
+    g_dpi_aware_enabled = enable;
+    return true;
+}
+
+bool process_dpi_aware_enabled() {
+    std::lock_guard<std::mutex> lock(g_dpi_mutex);
+    return g_dpi_aware_enabled;
+}
+
+void apply_process_dpi_aware_once() {
+    std::lock_guard<std::mutex> lock(g_dpi_mutex);
+    if (g_dpi_aware_locked) {
+        return;
+    }
+    g_dpi_aware_locked = true;
+    if (g_dpi_aware_enabled) {
+        ::SetProcessDPIAware();
+    }
+}
+
+} // namespace op::internal
+
 op::internal::OpContext::OpContext(int client_id) : id(client_id) {
-    // 将进程默认 DPI 感知设置为系统 DPI 感知
-    ::SetProcessDPIAware();
+    // 默认不改变进程 DPI 感知；需要物理像素的宿主必须在第一次 OpCreate 之前
+    // 调用 OpSetProcessDpiAware(1)。否则由宿主通过 manifest / API 自行决定。
+    apply_process_dpi_aware_once();
 
     // 初始化目录
     curr_path = current_directory();

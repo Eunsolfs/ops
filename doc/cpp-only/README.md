@@ -11,6 +11,7 @@
 
 - [API_CHANGES.md](API_CHANGES.md)：精确的删除/保留 API 清单
 - [BUILD_VS.md](BUILD_VS.md)：原生 VS2022 构建、依赖准备、根因与排错
+- [DPI.md](DPI.md)：OpCreate 与 SetProcessDPIAware 的进程级 DPI 开关
 - [TWINKLE_SYNC.md](TWINKLE_SYNC.md)：Twinkle 侧同步与换库步骤
 - [PROGRESS.md](PROGRESS.md)：按时间记录的进度与验证结果
 

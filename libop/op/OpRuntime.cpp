@@ -12,6 +12,14 @@ std::wstring op::Op::Ver() {
     return _T(OP_VERSION);
 }
 
+bool op::Op::SetProcessDpiAware(bool enable) {
+    return internal::set_process_dpi_aware(enable);
+}
+
+bool op::Op::IsProcessDpiAware() {
+    return internal::process_dpi_aware_enabled();
+}
+
 void op::Op::SetPath(const wchar_t *path, long *ret) {
     std::wstring fpath = path;
     replacew(fpath, L"/", L"\\");
