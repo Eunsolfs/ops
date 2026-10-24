@@ -300,6 +300,9 @@ OpenCV   = 5.0.0
   （含 `UtilsTest.X86CapiUndecoratedAliases` 与 `UtilsTest.ComIidBumpedForEarlyBinding`）。
 - 输出隔离：Debug 产物改到 `bin/{x64|x86}/Debug/`、`lib/{x64|x86}/Debug/`，避免与 Release
   同名 DLL/LIB 互相覆盖；Twinkle 仍只使用 Release。
+- 提交：`1ccc557 feat(com-ocr): COM IID 1.1、x86 C API 别名、OCR 并发与 int64 积分图`。
+- 最终验证：四配置 0 警告/0 错误；Release x64 10/10、Release x86 8/8、Debug x64 8/8、
+  Debug x86 8/8（过滤核心集）；Release PostBuild 同步 `op_c_api.h` SHA256 与 ops 源一致。
 - 遗留：`check_bind` 隐式桌面绑定、HTTP JSON/响应上限、FindPic/frameId 性能、`Delay` 忙等、
   DPI 实际状态、C API 线程安全/返回值生命周期文档、大图积分图测试、COM 注册用例。
 

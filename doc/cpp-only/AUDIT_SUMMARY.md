@@ -3,6 +3,7 @@
 - 审计基线：`slim/cpp-only-vs` @ `cdb2eb3`（对照上游 `d00f837`）
 - 审计日期：2026-10-25
 - 代码修复提交：`188cfae`（`fix(audit): 修复削减分支的 P0/P1 隐藏问题并补充审计`）
+- 后续最优优化提交：`1ccc557`（COM IID 1.1、x86 C API 别名、OCR 并发、int64 积分图、Debug 输出隔离）
 - 当前状态：工作区已提交；本文件与三份详细报告同批入库，后续文档更新见 `git log`。
 - 详细报告：
   - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能，16 条
@@ -46,6 +47,8 @@
   不再因单次后端卡死阻塞 `SetOcrEngine`/全进程 OCR。
 - **积分图**：`_sum` 从 `Image`(int32) 改为 `ImageSum`(int64)，`region_sum`/`gray_norm`/
   `real_match`/`FindLine` 全部 64 位；5K/双 4K 不再回绕。
+- **Debug 输出隔离**：Debug 产物改到 `bin/{x64|x86}/Debug/`、`lib/{x64|x86}/Debug/`，
+  避免同名 `op_x64.lib`/DLL 与 Release 互相覆盖；Twinkle 仍只使用 Release。
 - **COM 异常边界**：`OpAutomation::Invoke` 统一 `try/catch(...) -> E_FAIL`，覆盖 late-binding 调用。
 
 ## 3. 仍建议处理（未改代码）
