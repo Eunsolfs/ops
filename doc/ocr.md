@@ -1,59 +1,68 @@
-## 主要内容
-本文主要介绍ocr算法的基本原理，主要流程以及具体实现和优化
+# OCR 实现说明（HTTP-only）
 
-## ocr流程
-1. 将给定的RGB图像转化为灰度图像
-2. 根据指定的灰度范围将灰度图像二值化
-3. 使用滑动窗口将二值图像分为多个子区域
-4. 对每个子区域，与字库做相识度计算，相识度符合要求的添加至结果列表
-5. 对结果列表进行排序，输出
+> 本文描述 OP 精简改造后的 OCR 实现。点阵字库 / 本地字库 / 内存字库引擎已删除。
 
-下图为流程图
+## 1. 能力划分
 
-![altr](./ocr_flow.svg)
+改造后 OCR 相关的对外能力分成两类：
 
-## 原理
-### 灰度化
-由于彩色图像的RGB三个分量并不是独立的，因此转化为灰度一个分量有利于后续的处理，RGB值和灰度的转换，实际上是人眼对于彩色的感觉到亮度感觉的转换，这是一个心理学问题，有一个公式：
+### 1.1 HTTP OCR（识别）
 
-Grey = 0.299*R + 0.587*G + 0.114*B
+- `SetOcrEngine`：配置 OCR 服务地址与参数。
+- `Ocr` / `OcrEx`：识别截图区域；`OcrEx` 额外返回每个文本块的坐标。
+- `OcrAuto`：自动 OCR，不需要颜色描述。
+- `OcrFromFile` / `OcrAutoFromFile`：从图片文件识别。
+- `FindStr` / `FindStrEx`：在 HTTP OCR 结果上做字符串查找，返回命中的坐标。
 
-根据这个公式，依次读取每个像素点的R，G，B值，进行计算灰度值（转换为整型数），将灰度值赋值给新图像的相应位置，所有像素点遍历一遍后完成转换。
+以上接口统一由 `op::image::ImageSearchService` 调用 `op::ocr::HttpOcrService` 完成，
+后者是进程内单例（内部加锁），负责把 BGRA 像素编码后 POST 给外部 OCR 服务并解析结果。
 
-一张500X500的图像转换为同样大小的灰度图需要进行25万次上述公式的计算。进行优化是很有必要的，这个简单的算法是O(n)复杂度的，应该是不能优化了（或者用并行进行优化，本文不涉及），但是Grey = 0.299*R + 0.587*G + 0.114*B有更加高效的等价形式。
+### 1.2 二值图能力（不依赖 OCR）
 
-在ALU中，位操作快于整数加法，整数加法快于整数乘法（快多少取决于有没有乘法电路，乘法电路的结构），整数运算又比浮点数运算快得多。
+- `FindLine`：对指定颜色规则生成的二值图做 Hough 直线检测，输出 `角度,距离`；返回值是直线上的点数。
+- `FindColorBlock` / `FindColorBlockEx`：在二值图上搜索指定大小的颜色块。
 
-所以可以通过将浮点数运算转化为整数运算，整数运算转换为位操作进行优化
+这些接口只需要颜色描述，与字库无关。二值预处理固定使用默认值（关闭），
+即历史 `SetBinaryPreprocess(0, ...)` 的默认状态；相关设置接口已删除。
 
-Grey = 0.299*R + 0.587*G + 0.114*B
+## 2. HTTP OCR 流程
 
-可以转化为
-Grey = (299*R + 587*G + 114*B + 500) /1000；
+1. 调用方给出截图区域，`ImageSearchService` 复用当前截图（`_src`，BGRA）。
+2. 调用 `HttpOcrService::ocr(data, width, height, 4, result)`：
+   - 按 `SetOcrEngine` 配置的端点/超时发送 HTTP 请求；
+   - 未显式配置时按 `tesseract` 后端默认端点 `http://127.0.0.1:8080/api/v1/ocr`；
+   - 也支持 `paddle` 别名，对应 `http://127.0.0.1:8081/api/v1/ocr`；
+   - 环境变量 `OP_OCR_URL` / `OP_OCR_BACKEND` / `OP_OCR_TIMEOUT_MS` 可覆盖。
+3. 解析返回的文本块：`ocr_rec_t { left_top, right_bottom, text, confidence }`。
+4. `Ocr` / `OcrEx` 按 `sim` 过滤置信度并拼装输出；
+   `FindStr` / `FindStrEx` 把结果按坐标排序后拼成文本，在文本中查找目标字符串，
+   再把命中位置映射回对应文本块的坐标。
 
-整数运算会截断小数部分，加上500是为了四舍五入（找两个例子便可理解），减少精度损失。
+## 3. 二值化
 
-### 二值化
-为了进一步提取出字符的点阵信息，需要将灰度图像二值化，将字符的灰度值范围内的点阵填充为1，其余填充为0
+颜色描述格式沿用 OP 约定：
 
-### 滑动窗口
-首先对输入图像进行不同窗口大小的滑窗进行从左往右、从上到下的滑动。每次滑动时候对当前窗口执行相识度计算(与某个字库)。如果当前窗口得到较高相识度，则认为检测到了文字。
+- 普通颜色：`RRGGBB-DRDGDB`，多段用 `|` 分隔，每段可省略色差；
+- 背景色：以 `@` 开头，表示按背景色反选；
+- `sim` 在未显式给出色差时换算为隐式通道容差。
 
-![atr](slider_window.svg)
+`str2binaryfbk(color, sim)` 负责：
 
+1. 解析颜色描述为 `color_df_t` 列表；
+2. 若为前景色描述，调用 `ImageSearchAlgorithms::bgr2binary` 生成二值图；
+3. 若为背景色描述，调用 `ImageSearchAlgorithms::bgr2binarybk` 反选生成二值图。
 
-### 排序
-提取了字符信息后，需要决定字符在字符串中的位置，所以需要排序。排序的规则为先上后下，先左后右。
+`FindLine` / `FindColorBlock` / `FindColorBlockEx` 都只依赖这一步生成的二值图。
 
-## 优化
-从上面的流程来看，ocr的整个流程还是比较简单的，但是算法的复杂度比较高，对于1920*1080区域，假设字库为12*12，字库总量为20000的汉字字库，则需要比较的像素次数为
+## 4. 相关文件
 
-(1920-11)*(1080-11)*12*12*20000=5 877 276 480 000
+- `libop/ocr/OcrService.h/.cpp`：HTTP OCR 客户端（单例 + 互斥）。
+- `libop/image/ImageSearchService.h/.cpp`：OCR / 二值图入口，颜色解析与截图复用。
+- `libop/image/ImageSearchAlgorithms.h/.cpp`：二值化、直线检测、颜色/图像查找算法。
+- `libop/op/OpOcr.cpp`：`op::Op` 层的 OCR 方法实现。
+- `include/libop.h`、`include/op_c_api.h`、`libop/com/op.idl`：对外 API 声明。
 
-以1ghz的处理器来计算，需要5877s，速度实现太慢了，因此优化在ocr很有必要。
-
-主要的优化方式有以下几种：
-1. 粗定位
-2. 细分类
-3. 二分查找
-4. 筛选
+> 已删除：`libop/ocr/Dictionary.h`、`libop/ocr/TesseractOcr.*`、字库管理
+> （`SetDict`/`UseDict`/`AddDict`/`SaveDict`/`ClearDict`/...）、点阵取字与预览
+> （`FetchWord*`/`ExtractWordRects*`/`GetBinaryPreview`/`GetWordPreview`/...）、
+> 二值预处理配置（`SetBinaryPreprocess`/`GetBinaryPreprocess`）。

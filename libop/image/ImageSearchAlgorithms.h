@@ -6,16 +6,14 @@
 由于ocr与图像查找类似，故也在类ImageLoc中实现
 */
 #include "../base/Types.h"
-#include "../ocr/Dictionary.h"
 #include "../image/BitFunctions.h"
 #include "../image/Color.h"
+#include "../image/Image.h"
 #include "../base/ThreadPool.h"
 #include <string>
 #include <vector>
 
 namespace op::image {
-
-using namespace op::ocr;
 
 inline int HEX2INT(wchar_t c) {
     if (L'0' <= c && c <= L'9')
@@ -126,10 +124,6 @@ class ImageSearchAlgorithms {
 
     long FindColorBlockEx(long count, long height, long width, std::wstring &retstr);
 
-    long Ocr(Dictionary &dict, double sim, std::wstring &ret_str);
-
-    long OcrEx(Dictionary &dict, double sim, std::wstring &out_str);
-
     long FindStr(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr, long &retx, long &rety);
 
     long FindStrEx(std::map<point_t, ocr_rec_t> &ps, const vector<wstring> &vstr, std::wstring &out_str);
@@ -150,16 +144,6 @@ class ImageSearchAlgorithms {
 
     int get_bk_color(inputbin bin);
 
-    // 垂直方向投影,投到x轴
-    void binshadowx(const rect_t &rc, std::vector<rect_t> &out_put);
-    // 水平方向投影，投到(y)轴
-    void binshadowy(const rect_t &rc, std::vector<rect_t> &out_put);
-
-    // ocr 完全匹配模式
-    void _bin_ocr(const Dictionary &dict, std::map<point_t, ocr_rec_t> &ps);
-    // ocr 模糊匹配模式
-    void _bin_ocr(const Dictionary &dict, double sim, std::map<point_t, ocr_rec_t> &ps);
-
   public:
     /*
     if(abs(cr-src)<=df) pixel=1;
@@ -168,18 +152,10 @@ class ImageSearchAlgorithms {
     void bgr2binary(vector<color_df_t> &colors);
     // 二值化 auto
     void bgr2binarybk(const vector<color_df_t> &bk_colors);
-    // 图像裁剪
-    bool bin_image_cut(int min_word_h, const rect_t &inrc, rect_t &outrc);
-    void get_rois(int min_word_h, std::vector<rect_t> &vroi);
-    void get_rois(int min_word_w, int min_word_h, int padding, std::vector<rect_t> &vroi);
-    // ocr识别，返回识别到的字及对应坐标
-
-    void bin_ocr(const Dictionary &dict, double sim, std::map<point_t, ocr_rec_t> &ps);
 
   public:
     Image _src;
     ImageBin _gray;
-    ImageBin _record;
     ImageBin _binary;
     Image _sum;
     // 起始点

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    第三方依赖路径集中配置（相对仓库根目录，便于迁移）。
+    可用 /p:OpRepoRoot=... 或环境变量覆盖：
+      BLACKBONE_ROOT / OPENCV_ROOT / VCPKG_ROOT
+    仓库内的依赖默认从 build\_deps\ 下取（由旧 build.py 预先构建好的缓存）。
+  -->
+  <PropertyGroup Label="OpRepoLayout">
+    <OpRepoRoot Condition="'$(OpRepoRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</OpRepoRoot>
+    <OpDepsRoot>$(OpRepoRoot)build\_deps\</OpDepsRoot>
+    <OpBinDir>$(OpRepoRoot)bin\x64\</OpBinDir>
+    <OpLibDir>$(OpRepoRoot)lib\x64\</OpLibDir>
+    <OpObjDir>$(OpRepoRoot)build\vs\$(Platform)\$(Configuration)\</OpObjDir>
+  </PropertyGroup>
+
+  <!-- ============================ BlackBone ============================ -->
+  <PropertyGroup Label="OpDepsBlackBone">
+    <BlackBoneRoot Condition="'$(BlackBoneRoot)' == '' and '$(BLACKBONE_ROOT)' != ''">$(BLACKBONE_ROOT)</BlackBoneRoot>
+    <BlackBoneRoot Condition="'$(BlackBoneRoot)' == ''">$(OpDepsRoot)BlackBone</BlackBoneRoot>
+    <BlackBoneIncludeDir Condition="'$(BlackBoneIncludeDir)' == ''">$(BlackBoneRoot)\src\</BlackBoneIncludeDir>
+
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-x64\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-x64\BlackBone\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-x64\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-x64\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-x64\src\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-x64\src\BlackBone\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' != 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' != 'x64' and Exists('$(BlackBoneRoot)\build\vs2022-Win32\Release\BlackBone.lib')">$(BlackBoneRoot)\build\vs2022-Win32\Release\BlackBone.lib</BlackBoneLib>
+    <!-- 兜底：迁移机器时若目录结构不同，请显式传 /p:BlackBoneLib=... -->
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == '' and '$(Platform)' == 'x64'">$(BlackBoneRoot)\build\vs2022-x64\BlackBone\Release\BlackBone.lib</BlackBoneLib>
+    <BlackBoneLib Condition="'$(BlackBoneLib)' == ''">$(BlackBoneRoot)\build\vs2022-Win32\BlackBone\Release\BlackBone.lib</BlackBoneLib>
+  </PropertyGroup>
+
+  <!-- ============================== vcpkg ============================== -->
+  <!--
+    注意：本机执行过 vcpkg integrate install，全局注入的是 x64-windows（动态 CRT）的库。
+    OP 使用 /MT 静态 CRT，因此工程里用 VcpkgEnabled=false 关掉全局集成，
+    只手动引用 x64-windows-static 的 minhook / directx-headers。
+  -->
+  <PropertyGroup Label="OpDepsVcpkg">
+    <OpVcpkgRoot Condition="'$(OpVcpkgRoot)' == '' and '$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)</OpVcpkgRoot>
+    <OpVcpkgRoot Condition="'$(OpVcpkgRoot)' == '' and Exists('$(OpDepsRoot)vcpkg\installed')">$(OpDepsRoot)vcpkg</OpVcpkgRoot>
+    <OpVcpkgRoot Condition="'$(OpVcpkgRoot)' == ''">Y:\Tools\vcpkg</OpVcpkgRoot>
+
+    <OpVcpkgTriplet Condition="'$(Platform)' == 'x64'">x64-windows-static</OpVcpkgTriplet>
+    <OpVcpkgTriplet Condition="'$(Platform)' != 'x64'">x86-windows-static</OpVcpkgTriplet>
+    <OpVcpkgStaticDir>$(OpVcpkgRoot)\installed\$(OpVcpkgTriplet)</OpVcpkgStaticDir>
+
+    <OpMinHookLib Condition="'$(Platform)' == 'x64'">$(OpVcpkgStaticDir)\lib\minhook.x64.lib</OpMinHookLib>
+    <OpMinHookLib Condition="'$(Platform)' != 'x64'">$(OpVcpkgStaticDir)\lib\minhook.x86.lib</OpMinHookLib>
+    <OpMinHookLib Condition="!Exists('$(OpMinHookLib)')">$(OpVcpkgStaticDir)\lib\minhook.lib</OpMinHookLib>
+  </PropertyGroup>
+
+  <!-- ============================== OpenCV ============================= -->
+  <PropertyGroup Label="OpDepsOpenCv">
+    <OpOpenCvRoot Condition="'$(OpOpenCvRoot)' == '' and '$(OPENCV_ROOT)' != ''">$(OPENCV_ROOT)</OpOpenCvRoot>
+    <OpOpenCvRoot Condition="'$(OpOpenCvRoot)' == '' and '$(Platform)' == 'x64'">$(OpDepsRoot)opencv\install\vs2022-x64</OpOpenCvRoot>
+    <OpOpenCvRoot Condition="'$(OpOpenCvRoot)' == ''">$(OpDepsRoot)opencv\install\vs2022-Win32</OpOpenCvRoot>
+    <OpOpenCvIncludeDir>$(OpOpenCvRoot)\include</OpOpenCvIncludeDir>
+
+    <OpOpenCvLibDir Condition="Exists('$(OpOpenCvRoot)\$(Platform)\vc18\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc18\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(Platform)\vc17\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc17\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == '' and Exists('$(OpOpenCvRoot)\$(Platform)\vc16\staticlib')">$(OpOpenCvRoot)\$(Platform)\vc16\staticlib</OpOpenCvLibDir>
+    <OpOpenCvLibDir Condition="'$(OpOpenCvLibDir)' == ''">$(OpOpenCvRoot)\$(Platform)\vc17\staticlib</OpOpenCvLibDir>
+
+    <!-- OpenCV 5.0.0 的库名后缀（4.x 为 4xx）。与 libop 原先 CMake 的 OPENCV_LIB_SUFFIX 保持一致。 -->
+    <OpOpenCvLibSuffix Condition="'$(OpOpenCvLibSuffix)' == ''">500</OpOpenCvLibSuffix>
+
+    <!--
+      原 CMake 链接清单（modules + 3rdparty 静态库）。
+      注意：OpenCV 重建时 BUILD_LIST 不含 dnn，因此这里不链接 opencv_dnn500.lib。
+      若链接出现 LNK2019/LNK2038，先检查这里与实际 install 目录的 .lib 差异。
+    -->
+    <OpOpenCvLibs>opencv_calib$(OpOpenCvLibSuffix).lib;opencv_objdetect$(OpOpenCvLibSuffix).lib;opencv_stereo$(OpOpenCvLibSuffix).lib;opencv_features$(OpOpenCvLibSuffix).lib;opencv_imgcodecs$(OpOpenCvLibSuffix).lib;opencv_imgproc$(OpOpenCvLibSuffix).lib;opencv_geometry$(OpOpenCvLibSuffix).lib;opencv_flann$(OpOpenCvLibSuffix).lib;opencv_core$(OpOpenCvLibSuffix).lib;libclapack.lib;libjpeg-turbo.lib;libpng.lib;zlib.lib</OpOpenCvLibs>
+  </PropertyGroup>
+
+  <!--
+    依赖缺失时给出可读的报错，而不是几百行 C1083/LNK1104。
+    只在设置了 OpCheckDependencies=true 且非静态库（需要链接）的工程里生效；
+    纯头文件阶段的验证可传 /p:OpSkipDependencyCheck=true 绕过。
+  -->
+  <Target Name="OpCheckDependencies"
+          Condition="'$(OpCheckDependencies)' == 'true' and '$(OpSkipDependencyCheck)' != 'true'"
+          BeforeTargets="ClCompile">
+    <Error Condition="!Exists('$(BlackBoneIncludeDir)BlackBone\Process\Process.h')"
+           Text="[OP] 找不到 BlackBone 头文件：$(BlackBoneIncludeDir)BlackBone\Process\Process.h。请先按旧 build.py 的依赖引导构建 BlackBone，或传 /p:BlackBoneRoot=... / /p:BlackBoneIncludeDir=..." />
+    <Error Condition="!Exists('$(OpOpenCvIncludeDir)\opencv2\core.hpp')"
+           Text="[OP] 找不到 OpenCV 头文件：$(OpOpenCvIncludeDir)\opencv2\core.hpp。请先构建 OpenCV 静态库到 $(OpOpenCvRoot)，或设置 OPENCV_ROOT。" />
+    <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(BlackBoneLib)')"
+           Text="[OP] 找不到 BlackBone.lib：$(BlackBoneLib)。" />
+    <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(OpMinHookLib)')"
+           Text="[OP] 找不到 MinHook 静态库：$(OpMinHookLib)。请安装 vcpkg x64-windows-static 的 minhook，或设置 VCPKG_ROOT。" />
+    <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(OpOpenCvLibDir)\opencv_core$(OpOpenCvLibSuffix).lib')"
+           Text="[OP] 找不到 OpenCV 静态库：$(OpOpenCvLibDir)\opencv_core$(OpOpenCvLibSuffix).lib。" />
+  </Target>
+</Project>

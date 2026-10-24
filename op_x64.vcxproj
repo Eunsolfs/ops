@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    op_x64：COM 插件 DLL（IOpAutomation）+ Hook 导出。
+    与旧 CMake 的 op_com 目标等价：编译【全部 libop 源码 + com 源码 + MIDL 生成的 op_i.c】，
+    而不是只链接 libop.lib —— 否则 op.def 里的 SetDisplayHook / SetInputHook 等导出会丢失。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1002}</ProjectGuid>
+    <RootNamespace>op_x64</RootNamespace>
+    <ProjectName>op_x64</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)' != 'Debug'">false</UseDebugLibraries>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OpCheckDependencies>true</OpCheckDependencies>
+    <OpBuildsAndLinksOpenCv>true</OpBuildsAndLinksOpenCv>
+    <OpLinkHeavyDeps>true</OpLinkHeavyDeps>
+    <OpGenerateComIdl>true</OpGenerateComIdl>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MSBuildThisFileDirectory)vs\op.common.props" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(OpOutDirBin)</OutDir>
+    <IntDir>$(OpIntDirRoot)op_x64\</IntDir>
+    <TargetName>op_x64</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <ImportLibrary>$(OpOutDirLib)op_x64.lib</ImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Label="OpComCompile">
+    <ClCompile>
+      <!-- 旧 CMake op_com：_USRDLL;_WINDLL;OP_EXPORTS（无 U_STATIC_IMPLEMENTATION） -->
+      <PreprocessorDefinitions>_USRDLL;_WINDLL;OP_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ResourceCompile>
+      <!-- op.rc 里 1 TYPELIB "op.tlb" 需要 MIDL 产物；op.tlb 变化要触发 RC 重编 -->
+      <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalInputs>$(IntDir)op.tlb;%(AdditionalInputs)</AdditionalInputs>
+    </ResourceCompile>
+    <Link>
+      <ModuleDefinitionFile>$(OpRepoRoot)libop\com\op.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- libop 全部源码（含 kiero2 / C++20 局部覆盖） -->
+  <Import Project="$(MSBuildThisFileDirectory)vs\op.sources.props" />
+
+  <ItemGroup Label="OpComSources">
+    <ClCompile Include="$(OpRepoRoot)libop\com\op.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\com\OpAutomation.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\com\stdafx.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\com\compreg.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\com\dllmain.cpp" />
+    <!-- MIDL 生成的 op_i.c（由 OpGenerateComIdl target 在 ClCompile 之前生成） -->
+    <ClCompile Include="$(IntDir)op_i.c">
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup Label="OpComResources">
+    <ResourceCompile Include="$(OpRepoRoot)libop\com\op.rc" />
+    <None Include="$(OpRepoRoot)libop\com\op.def" />
+    <None Include="$(OpRepoRoot)libop\com\op.rgs" />
+    <None Include="$(OpRepoRoot)libop\com\OpAutomation.rgs" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

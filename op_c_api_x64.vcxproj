@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    op_c_api_x64：给 Twinkle 用的 C API DLL。
+    与旧 CMake 的 op_c_api 目标等价：只编译 c_api/op_c_api.cpp + hook/HookExport.cpp，
+    然后静态链接 libop.lib（以及 libop 需要的 OpenCV / BlackBone / MinHook）。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1003}</ProjectGuid>
+    <RootNamespace>op_c_api_x64</RootNamespace>
+    <ProjectName>op_c_api_x64</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)' != 'Debug'">false</UseDebugLibraries>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OpCheckDependencies>true</OpCheckDependencies>
+    <OpBuildsAndLinksOpenCv>true</OpBuildsAndLinksOpenCv>
+    <OpLinkHeavyDeps>true</OpLinkHeavyDeps>
+    <OpGenerateComIdl>false</OpGenerateComIdl>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MSBuildThisFileDirectory)vs\op.common.props" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(OpOutDirBin)</OutDir>
+    <IntDir>$(OpIntDirRoot)op_c_api_x64\</IntDir>
+    <TargetName>op_c_api_x64</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <ImportLibrary>$(OpOutDirLib)op_c_api_x64.lib</ImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Label="OpCApiCompile">
+    <ClCompile>
+      <!-- 旧 CMake op_c_api：U_STATIC_IMPLEMENTATION + OP_C_API_EXPORTS -->
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION;OP_C_API_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(OpOutDirLib);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libop.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Label="OpCApiSources">
+    <ClCompile Include="$(OpRepoRoot)libop\c_api\op_c_api.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\HookExport.cpp" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpCApiResources">
+    <ResourceCompile Include="$(OpRepoRoot)libop\c_api\op_c_api.rc" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpProjectRefs">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)libop.vcxproj">
+      <Project>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1001}</Project>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

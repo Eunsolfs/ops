@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    tools：EasyCom 辅助 DLL（可选的调试/COM 辅助工具，与 op 主链路无关）。
+    旧 CMake tools/CMakeLists.txt 的等价工程：dllmain.c + easycom.cpp + MIDL 生成的 op_i.c，
+    只链接 MinHook。不依赖 OpenCV / BlackBone。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1004}</ProjectGuid>
+    <RootNamespace>tools</RootNamespace>
+    <ProjectName>tools</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)' != 'Debug'">false</UseDebugLibraries>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OpCheckDependencies>false</OpCheckDependencies>
+    <OpBuildsAndLinksOpenCv>false</OpBuildsAndLinksOpenCv>
+    <OpLinkHeavyDeps>false</OpLinkHeavyDeps>
+    <OpGenerateComIdl>true</OpGenerateComIdl>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MSBuildThisFileDirectory)vs\op.common.props" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(OpOutDirBin)</OutDir>
+    <IntDir>$(OpIntDirRoot)tools\</IntDir>
+    <TargetName>tools</TargetName>
+    <TargetExt>.dll</TargetExt>
+    <ImportLibrary>$(OpOutDirLib)tools.lib</ImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Label="OpToolsCompile">
+    <ClCompile>
+      <!-- 旧 CMake tools：_UNICODE;UNICODE;_CMAKE_BUILD -->
+      <PreprocessorDefinitions>_UNICODE;UNICODE;_CMAKE_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(OpRepoRoot)tools;$(OpRepoRoot);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Label="OpToolsSources">
+    <ClCompile Include="$(OpRepoRoot)tools\dllmain.c">
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)tools\EasyCom.cpp" />
+    <ClCompile Include="$(IntDir)op_i.c">
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <ClInclude Include="$(OpRepoRoot)tools\EasyCom.h" />
+    <ClInclude Include="$(OpRepoRoot)tools\framework.h" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

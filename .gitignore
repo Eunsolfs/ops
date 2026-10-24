@@ -30,7 +30,10 @@ Launcher/
 optool/
 PyTest/
 example/
-examples/
+# 本 fork 自带一个纯 C++ 调用示例，需要纳入版本管理
+examples/*
+!examples/cpp_call/
+!examples/cpp_call/**
 remote/
 # Visual Studio 2015 cache/options directory
 .vs/

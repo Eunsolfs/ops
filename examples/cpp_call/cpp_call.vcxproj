@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    cpp_call：纯 C++ 调用示例。
+    直接链接 libop.lib（静态库）并使用 include/libop.h 里的 op::Op 类，
+    不经过 C API DLL，也不经过 COM。
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1005}</ProjectGuid>
+    <RootNamespace>cpp_call</RootNamespace>
+    <ProjectName>cpp_call</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+    <VcpkgEnableManifest>false</VcpkgEnableManifest>
+    <VcpkgManifestInstall>false</VcpkgManifestInstall>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>false</UseOfMfc>
+    <UseDebugLibraries Condition="'$(Configuration)' == 'Debug'">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="'$(Configuration)' != 'Debug'">false</UseDebugLibraries>
+    <VcpkgEnabled>false</VcpkgEnabled>
+    <VcpkgApplocalDeps>false</VcpkgApplocalDeps>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OpCheckDependencies>true</OpCheckDependencies>
+    <OpBuildsAndLinksOpenCv>true</OpBuildsAndLinksOpenCv>
+    <OpLinkHeavyDeps>true</OpLinkHeavyDeps>
+    <OpGenerateComIdl>false</OpGenerateComIdl>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(MSBuildThisFileDirectory)..\..\vs\op.common.props" />
+  </ImportGroup>
+
+  <PropertyGroup Label="UserMacros" />
+
+  <PropertyGroup>
+    <OutDir>$(OpOutDirBin)</OutDir>
+    <IntDir>$(OpIntDirRoot)cpp_call\</IntDir>
+    <TargetName>cpp_call</TargetName>
+    <TargetExt>.exe</TargetExt>
+    <LinkIncremental Condition="'$(Configuration)' == 'Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)' != 'Debug'">false</LinkIncremental>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup Label="OpCppCallCompile">
+    <ClCompile>
+      <!-- 静态链接 libop：让 include/libop.h 里的 OP_API 为空，而不是 dllimport。 -->
+      <PreprocessorDefinitions>U_STATIC_IMPLEMENTATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <AdditionalLibraryDirectories>$(OpLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libop.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Label="OpCppCallSources">
+    <ClCompile Include="$(MSBuildThisFileDirectory)main.cpp" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpProjectRefs">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\libop.vcxproj">
+      <Project>{3A7E1B52-1C4D-4A63-9C1E-0B1F5C5A1001}</Project>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

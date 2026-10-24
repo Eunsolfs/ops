@@ -321,53 +321,6 @@ class ATL_NO_VTABLE OpAutomation
     // 根据通配符获取文件集合. 方便用于FindPic和FindPicEx
     STDMETHOD(MatchPicName)(BSTR pic_name, BSTR *ret);
     //----------------------ocr-------------------------
-    // 设置字库文件
-    STDMETHOD(SetDict)(LONG idx, BSTR file_name, LONG *ret);
-    STDMETHOD(GetDict)(LONG idx, LONG font_index, BSTR *ret_str);
-    // 设置内存字库文件
-    STDMETHOD(SetMemDict)(LONG idx, SAFEARRAY *data, LONG *ret);
-    // 使用哪个字库文件进行识别
-    STDMETHOD(UseDict)(LONG idx, LONG *ret);
-    // 给指定的字库中添加一条字库信息
-    STDMETHOD(AddDict)(LONG idx, BSTR dict_info, LONG *ret);
-    STDMETHOD(SaveDict)(LONG idx, BSTR file_name, LONG *ret);
-    // 清空指定的字库
-    STDMETHOD(ClearDict)(LONG idx, LONG *ret);
-    // 获取指定的字库中的字符数量
-    STDMETHOD(GetDictCount)(LONG idx, LONG *ret);
-    // 获取当前使用的字库序号
-    STDMETHOD(GetNowDict)(LONG *ret);
-    // 根据指定的范围,以及指定的颜色描述，提取点阵信息，类似于大漠工具里的单独提取
-    STDMETHOD(FetchWord)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, BSTR word, BSTR *ret_str);
-    STDMETHOD(FetchWordEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR word, BSTR *ret_str);
-    STDMETHOD(ExtractWordRects)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, LONG min_word_h,
-                                BSTR *ret_str);
-    STDMETHOD(ExtractWordRectsEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, LONG min_word_w,
-                                  LONG min_word_h, LONG padding, BSTR *ret_str);
-    STDMETHOD(FetchWords)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR words, LONG min_word_h,
-                          BSTR *ret_str);
-    STDMETHOD(FetchWordsEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR words, LONG min_word_w,
-                            LONG min_word_h, LONG padding, BSTR *ret_str);
-    STDMETHOD(FetchWordsByRects)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR words, BSTR rects,
-                                 BSTR *ret_str);
-    STDMETHOD(GetBinaryPreview)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR *ret_str,
-                                LONG *ret);
-    STDMETHOD(GetWordPreview)(BSTR dict_info, BSTR *ret_str, LONG *ret);
-    STDMETHOD(CheckWordDict)(BSTR dict_info, BSTR *ret_str, LONG *ret);
-    STDMETHOD(NormalizeWordDict)(BSTR dict_info, BSTR *ret_str, LONG *ret);
-    STDMETHOD(RenameWordDict)(BSTR dict_info, BSTR words, BSTR *ret_str, LONG *ret);
-    STDMETHOD(SetBinaryPreprocess)(LONG mode, LONG isolated_threshold, LONG min_component_area, LONG bridge_gap,
-                                   LONG *ret);
-    STDMETHOD(GetBinaryPreprocess)(LONG *mode, LONG *isolated_threshold, LONG *min_component_area, LONG *bridge_gap,
-                                   LONG *ret);
-    // 识别这个范围内所有满足条件的词组，这个识别函数不会用到字库. 只是识别大概形状的位置
-    STDMETHOD(GetWordsNoDict)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, BSTR *ret_str);
-    // 在使用GetWords进行词组识别以后,可以用此接口进行识别词组数量的计算
-    STDMETHOD(GetWordResultCount)(BSTR result, LONG *ret);
-    // 在使用GetWords进行词组识别以后,可以用此接口进行识别各个词组的坐标
-    STDMETHOD(GetWordResultPos)(BSTR result, LONG index, VARIANT *x, VARIANT *y, LONG *ret);
-    // 在使用GetWords进行词组识别以后,可以用此接口进行识别各个词组的内容
-    STDMETHOD(GetWordResultStr)(BSTR result, LONG index, BSTR *ret_str);
     // 识别屏幕范围(x1,y1,x2,y2)内符合color_format的字符串,并且相似度为sim,sim取值范围(0.1-1.0),
     STDMETHOD(Ocr)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR *ret_str);
     // 回识别到的字符串，以及每个字符的坐标.
@@ -377,11 +330,11 @@ class ATL_NO_VTABLE OpAutomation
     (LONG x1, LONG y1, LONG x2, LONG y2, BSTR strs, BSTR color, DOUBLE sim, VARIANT *retx, VARIANT *rety, LONG *ret);
     // 返回符合color_format的所有坐标位置
     STDMETHOD(FindStrEx)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR strs, BSTR color, DOUBLE sim, BSTR *retstr);
-    // 识别屏幕范围(x1,y1,x2,y2)内的字符串,使用tesseract库识别
+    // 识别屏幕范围(x1,y1,x2,y2)内的字符串,走 HTTP OCR 服务
     STDMETHOD(OcrAuto)(LONG x1, LONG y1, LONG x2, LONG y2, DOUBLE sim, BSTR *ret_str);
     // 从文件中识别图片
     STDMETHOD(OcrFromFile)(BSTR file_name, BSTR color_format, DOUBLE sim, BSTR *retstr);
-    // 从文件中识别图片,使用tesseract库识别
+    // 从文件中识别图片,走 HTTP OCR 服务
     STDMETHOD(OcrAutoFromFile)(BSTR file_name, DOUBLE sim, BSTR *retstr);
     // 查找频幕中的直线
     STDMETHOD(FindLine)(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, BSTR *retstr);

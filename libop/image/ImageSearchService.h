@@ -2,7 +2,6 @@
 #include "ImageSearchAlgorithms.h"
 #include <memory>
 #include <string>
-// #include "TesseractOcr.h"
 
 namespace op::image {
 
@@ -11,7 +10,7 @@ namespace op::image {
 1.像素比较，查找
 2.颜色转化
 3.图像定位
-4.简单OCR
+4.OCR（统一走 HTTP OCR 服务）
 5....
 
 同一个 ImageSearchService 实例会复用截图和算法工作区，不支持并发调用；
@@ -19,9 +18,6 @@ namespace op::image {
 */
 class ImageSearchService : public ImageSearchAlgorithms {
   public:
-    // 字库槽位对外范围为 0-99。
-    const static int _max_dict = 100;
-
     ImageSearchService();
     ~ImageSearchService();
     //
@@ -52,55 +48,8 @@ class ImageSearchService : public ImageSearchAlgorithms {
 
     long GetColorNum(const wstring &color, double sim);
 
-    long SetMemDict(int idx, const void *data, long size);
-
-    long SetDict(int idx, const wstring &file);
-
-    std::wstring GetDict(long idx, long font_index);
-
-    long UseDict(int idx);
-
-    long AddDict(long idx, const wstring &dict_info);
-
-    long SaveDict(long idx, const wstring &file_name);
-
-    long ClearDict(long idx);
-
-    long GetDictCount(long idx);
-
-    long GetNowDict();
-
-    long SetBinaryPreprocess(long mode, long isolated_threshold, long min_component_area, long bridge_gap);
-
-    long GetBinaryPreprocess(long &mode, long &isolated_threshold, long &min_component_area, long &bridge_gap) const;
-
-    std::wstring FetchWord(rect_t rc, const wstring &color, const wstring &word);
-
-    std::wstring FetchWord(rect_t rc, const wstring &color, double sim, const wstring &word);
-
-    long ExtractWordRects(const wstring &color, double sim, long min_word_h, std::vector<rect_t> &rects);
-
-    long ExtractWordRectsEx(const wstring &color, double sim, long min_word_w, long min_word_h, long padding,
-                            std::vector<rect_t> &rects);
-
-    long FetchWords(const wstring &color, double sim, const wstring &words, long min_word_h, std::wstring &out_str);
-
-    long FetchWordsEx(const wstring &color, double sim, const wstring &words, long min_word_w, long min_word_h,
-                      long padding, std::wstring &out_str);
-
-    long FetchWordsByRects(const wstring &color, double sim, const wstring &words, const std::vector<rect_t> &rects,
-                           std::wstring &out_str);
-
-    long GetBinaryPreview(const wstring &color, double sim, std::wstring &out_str);
-
-    long GetWordPreview(const wstring &dict_info, std::wstring &out_str);
-
-    long CheckWordDict(const wstring &dict_info, std::wstring &out_str);
-
-    long NormalizeWordDict(const wstring &dict_info, std::wstring &out_str);
-
-    long RenameWordDict(const wstring &dict_info, const wstring &words, std::wstring &out_str);
-
+    // 以下 OCR 接口统一调用 HTTP OCR 服务（HttpOcrService），不再支持本地点阵字库。
+    // color/sim 参数保留是为了兼容既有调用方；HTTP OCR 只使用 sim 作为置信度过滤阈值。
     long OCR(const wstring &color, double sim, std::wstring &out_str);
 
     long OcrEx(const wstring &color, double sim, std::wstring &out_str);
@@ -115,6 +64,7 @@ class ImageSearchService : public ImageSearchAlgorithms {
 
     long OcrAutoFromFile(const wstring &files, double sim, std::wstring &retstr);
 
+    // 直线检测不依赖字库，只需要二值图。
     long FindLine(const wstring &color, double sim, wstring &retStr);
 
     long LoadPic(const wstring &files);
@@ -124,19 +74,6 @@ class ImageSearchService : public ImageSearchAlgorithms {
     long LoadMemPic(const wstring &file_name, void *data, long size);
 
     long GetPicSize(const wstring &file_name, long *x, long *y);
-
-    void str2binaryfbk(const wstring &color);
-
-  private:
-    // SetDict/SetMemDict 写入全局字库槽；AddDict/ClearDict 写入对象私有槽。
-    Dictionary _private_dicts[_max_dict];
-    bool _private_dict_overrides[_max_dict];
-    // 当前字库索引
-    int _curr_idx;
-    long _binary_preprocess_mode;
-    long _binary_isolated_threshold;
-    long _binary_min_component_area;
-    long _binary_bridge_gap;
 
   public:
     // 当前目录
@@ -150,14 +87,8 @@ class ImageSearchService : public ImageSearchAlgorithms {
     int str2colordfs(const wstring &color_str, std::vector<color_df_t> &colors, std::vector<bool> *explicit_dfs);
     void parse_multi_color_args(const wstring &first_color, const wstring &offset_color,
                                 std::vector<color_df_t> &vfirst_color, std::vector<pt_cr_df_t> &voffset_cr);
+    // 按颜色描述生成二值图；FindColorBlock 与 FindLine 共用。
     void str2binaryfbk(const wstring &color, double sim);
-    void str2pointbinaryfbk(const wstring &color);
-    void str2pointbinaryfbk(const wstring &color, double sim);
-    void ApplyBinaryPreprocess();
-    std::wstring FetchWordFromBinary(rect_t rc, const wstring &word);
-    long FetchWordsFromBinary(const wstring &words, const std::vector<rect_t> &rects, std::wstring &out_str);
-    std::shared_ptr<Dictionary> ActiveDict(int idx);
-    Dictionary &MutablePrivateDict(int idx);
     void str2colors(const wstring &color, std::vector<color_t> &vcolor);
     // vmatches 是算法层使用的裸指针视图，holders 负责延长共享缓存对象的生命周期。
     void files2mats(const wstring &files, std::vector<PicMatchTemplate *> &vmatches, std::vector<wstring> &vstr,

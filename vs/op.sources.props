@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    libop 核心源码清单（与旧 libop/CMakeLists.txt 一一对应，WGC 已启用、OpenCV 已启用）。
+    libop.vcxproj 与 op_x64.vcxproj 共用这份清单：op_x64 必须重新编译全部源码，
+    不能只链接 libop.lib，否则 hook 导出（op.def 中的 SetDisplayHook 等）会丢失。
+  -->
+
+  <!-- 局部 C++20：只覆盖确实使用 C++20 的内部实现（与旧 CMake 的 OP_LOCAL_CXX20_SOURCES 一致） -->
+  <ItemGroup Label="OpCxx20Sources">
+    <ClCompile Include="$(OpRepoRoot)libop\binding\BindingSession.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\capture\sources\MemoryImageSource.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\capture\backends\GdiCapture.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\capture\backends\HookCapture.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\capture\backends\WgcCapture.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\hook\D3D10Capture.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)libop\hook\D3D11Capture.cpp">
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <PreprocessorDefinitions>_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
+
+  <!-- Kiero2：每个 cpp 需要各自的 KIERO_IMPL_FIRST_SLOT -->
+  <ItemGroup Label="OpKieroSources">
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_d3d9.cpp">
+      <PreprocessorDefinitions>KIERO_IMPL_FIRST_SLOT=0;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_d3d10.cpp">
+      <PreprocessorDefinitions>KIERO_IMPL_FIRST_SLOT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_d3d11.cpp">
+      <PreprocessorDefinitions>KIERO_IMPL_FIRST_SLOT=2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_d3d12.cpp">
+      <PreprocessorDefinitions>KIERO_IMPL_FIRST_SLOT=3;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_opengl.cpp">
+      <PreprocessorDefinitions>KIERO_IMPL_FIRST_SLOT=4;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemGroup>
+
+  <ItemGroup Label="OpLibopSources">
+    <!-- libop.cpp（门面） -->
+    <ClCompile Include="$(OpRepoRoot)libop\libop.cpp" />
+
+    <!-- op/：op::Op 分文件实现 -->
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpContext.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpRuntime.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpProcess.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpClipboard.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpWindow.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpInput.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpAlgorithm.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpImage.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpOpenCv.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpOcr.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpYolo.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\op\OpMemory.cpp" />
+
+    <!-- capture/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\capture\FrameInfo.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\capture\ICaptureBackend.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\capture\backends\DxgiCapture.cpp" />
+
+    <!-- input/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\input\mouse\WinMouse.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\mouse\DxMouse.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\mouse\CursorShape.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\keyboard\KeyboardBackend.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\keyboard\WinKeyboard.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\input\keyboard\DxKeyboard.cpp" />
+
+    <!-- hook/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\hook\ApiResolver.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\D3D9Capture.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\D3D12Capture.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\DisplayHook.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\DxCaptureCommon.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\InputHook.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\InputHookClient.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\HookExport.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\MinHookRuntime.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\hook\OpenGLCapture.cpp" />
+
+    <!-- 3rd_party/kiero2 公共部分 -->
+    <ClCompile Include="$(OpRepoRoot)3rd_party\kiero2\kiero_intern.cpp" />
+
+    <!-- base/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\base\AutomationModes.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\base\Utils.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\base\Environment.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\base\WindowsVersion.cpp" />
+
+    <!-- window/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\window\DllInjector.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowProcess.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowService.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowState.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowText.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\window\WindowLayout.cpp" />
+
+    <!-- image/ network/ ocr/ yolo/ memory/ ipc/ -->
+    <ClCompile Include="$(OpRepoRoot)libop\image\ImageSearchAlgorithms.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\image\ImageSearchService.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\network\HttpClient.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\ocr\OcrService.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\yolo\YoloDetector.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\memory\DiaGuids.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\memory\ProcessMemory.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\ipc\Pipe.cpp" />
+
+    <!-- opencv/（OpenCV 启用时才编译，与旧 CMake OP_OPENCV_SOURCES 一致） -->
+    <ClCompile Include="$(OpRepoRoot)libop\opencv\OpenCvBridge.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\opencv\OpenCvHelpers.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\opencv\TemplateMatcher.cpp" />
+  </ItemGroup>
+
+  <ItemGroup Label="OpHeaders">
+    <ClInclude Include="$(OpRepoRoot)include\libop.h" />
+    <ClInclude Include="$(OpRepoRoot)include\op_c_api.h" />
+    <ClInclude Include="$(OpRepoRoot)libop\com\op.idl" />
+  </ItemGroup>
+</Project>

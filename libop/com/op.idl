@@ -176,9 +176,7 @@ interface IOpAutomation : IDispatch
 	[id(179)] HRESULT GetPicSize([in] BSTR pic_name, [out] VARIANT* width, [out] VARIANT* height, [out, retval] LONG* ret);
 	[id(180)] HRESULT GetScreenFrameInfo([out] LONG* frame_id, [out] LONG* time);
 	
-	//ocr 200-230
-	[id(200)] HRESULT SetDict([in] LONG idx, [in] BSTR file_name, [out, retval] LONG* ret);
-	[id(201)] HRESULT UseDict([in] LONG idx, [out, retval] LONG* ret);
+	//ocr 200-244：字库/点阵相关 dispid（200、201、220-244）已删除，保留 id 空洞，不重排其余 id。
 	[id(202)] HRESULT Ocr([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [out, retval] BSTR* ret_str);
 	[id(203)] HRESULT OcrEx([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [out, retval] BSTR* ret_str);
 	[id(204)] HRESULT FindStr([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR str, [in] BSTR color, [in] DOUBLE sim, [out] VARIANT* retx, [out] VARIANT* rety, [out, retval]LONG* ret);
@@ -191,31 +189,6 @@ interface IOpAutomation : IDispatch
 	[id(211)] HRESULT SetYoloEngine([in] BSTR path_of_engine, [in] BSTR dll_name, [in] BSTR argv, [out, retval] LONG* ret);
 	[id(212)] HRESULT YoloDetect([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] DOUBLE conf, [in] DOUBLE iou, [out] BSTR* retjson, [out, retval] LONG* ret);
 	[id(213)] HRESULT YoloDetectFromFile([in] BSTR file_name, [in] DOUBLE conf, [in] DOUBLE iou, [out] BSTR* retjson, [out, retval] LONG* ret);
-	[id(220)] HRESULT SetMemDict([in] LONG idx, [in] SAFEARRAY(BYTE) data, [out, retval] LONG* ret);
-	[id(221)] HRESULT GetDict([in] LONG idx, [in] LONG font_index, [out, retval] BSTR* retstr);
-	[id(222)] HRESULT AddDict([in] LONG idx, [in] BSTR dict_info, [out, retval] LONG* ret);
-	[id(223)] HRESULT SaveDict([in] LONG idx, [in] BSTR file_name, [out, retval] LONG* ret);
-	[id(224)] HRESULT ClearDict([in] LONG idx, [out, retval] LONG* ret);
-	[id(225)] HRESULT GetDictCount([in] LONG idx, [out, retval] LONG* ret);
-	[id(226)] HRESULT GetNowDict([out, retval] LONG* ret);
-	[id(227)] HRESULT FetchWord([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] BSTR word, [out, retval] BSTR* retstr);
-	[id(228)] HRESULT GetWordsNoDict([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [out, retval] BSTR* retstr);
-	[id(229)] HRESULT GetWordResultCount([in] BSTR result, [out, retval] LONG* ret);
-	[id(230)] HRESULT GetWordResultPos([in] BSTR result, [in] LONG index, [out] VARIANT* x, [out] VARIANT* y, [out, retval] LONG* ret);
-	[id(231)] HRESULT GetWordResultStr([in] BSTR result, [in] LONG index, [out, retval] BSTR* retstr);
-	[id(232)] HRESULT ExtractWordRects([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] LONG min_word_h, [out, retval] BSTR* retstr);
-	[id(233)] HRESULT FetchWords([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] BSTR words, [in] LONG min_word_h, [out, retval] BSTR* retstr);
-	[id(234)] HRESULT GetBinaryPreview([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [out] BSTR* retstr, [out, retval] LONG* ret);
-	[id(235)] HRESULT GetWordPreview([in] BSTR dict_info, [out] BSTR* retstr, [out, retval] LONG* ret);
-	[id(236)] HRESULT CheckWordDict([in] BSTR dict_info, [out] BSTR* retstr, [out, retval] LONG* ret);
-	[id(237)] HRESULT FetchWordsByRects([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] BSTR words, [in] BSTR rects, [out, retval] BSTR* retstr);
-	[id(238)] HRESULT FetchWordEx([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] BSTR word, [out, retval] BSTR* retstr);
-	[id(239)] HRESULT ExtractWordRectsEx([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] LONG min_word_w, [in] LONG min_word_h, [in] LONG padding, [out, retval] BSTR* retstr);
-	[id(240)] HRESULT FetchWordsEx([in] LONG x1, [in] LONG y1, [in] LONG x2, [in] LONG y2, [in] BSTR color, [in] DOUBLE sim, [in] BSTR words, [in] LONG min_word_w, [in] LONG min_word_h, [in] LONG padding, [out, retval] BSTR* retstr);
-	[id(241)] HRESULT NormalizeWordDict([in] BSTR dict_info, [out] BSTR* retstr, [out, retval] LONG* ret);
-	[id(242)] HRESULT RenameWordDict([in] BSTR dict_info, [in] BSTR words, [out] BSTR* retstr, [out, retval] LONG* ret);
-	[id(243)] HRESULT SetBinaryPreprocess([in] LONG mode, [in] LONG isolated_threshold, [in] LONG min_component_area, [in] LONG bridge_gap, [out, retval] LONG* ret);
-	[id(244)] HRESULT GetBinaryPreprocess([out] LONG* mode, [out] LONG* isolated_threshold, [out] LONG* min_component_area, [out] LONG* bridge_gap, [out, retval] LONG* ret);
 
 	[id(250)] HRESULT WriteData([in] hyper hwnd, [in]BSTR address, [in] BSTR data, [in] LONG size, [out, retval] LONG* ret);
 	[id(251)] HRESULT ReadData([in] hyper hwnd, [in] BSTR address, [in] LONG size, [out, retval] BSTR* retstr);

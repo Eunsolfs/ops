@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    OP 公共工程属性：编译/链接选项、include 路径、输出目录、COM MIDL 生成步骤。
+    与旧 CMake（CMakeLists.txt + libop/CMakeLists.txt）保持等价：
+      - /MT /O2 /EHa /utf-8，C++17（个别文件 C++20）
+      - 定义 WIN32;_WINDOWS;_UNICODE;UNICODE;OP_VERSION="0.4.8.3";_AMD64_;OP_ENABLE_WGC
+      - 静态链接 OpenCV 5 / BlackBone / MinHook(vcpkg x64-windows-static)
+    依赖路径见 vs/op.deps.props，源码清单见 vs/op.sources.props。
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)op.deps.props" />
+
+  <PropertyGroup Label="OpDirs">
+    <OpOutDirBin>$(OpBinDir)</OpOutDirBin>
+    <OpOutDirLib>$(OpLibDir)</OpOutDirLib>
+    <OpIntDirRoot>$(OpObjDir)</OpIntDirRoot>
+  </PropertyGroup>
+
+  <PropertyGroup Label="OpArch">
+    <OpArchDef Condition="'$(Platform)' == 'x64'">_AMD64_</OpArchDef>
+    <OpArchDef Condition="'$(Platform)' != 'x64'">_X86_</OpArchDef>
+  </PropertyGroup>
+
+  <!-- ========================= 编译选项 ========================= -->
+  <ItemDefinitionGroup Label="OpCommonCompile">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;_WINDOWS;_CRT_NON_CONFORMING_SWPRINTFS;_CRT_SECURE_NO_WARNINGS;_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING;_UNICODE;UNICODE;OP_VERSION=&quot;0.4.8.3&quot;;$(OpArchDef);OP_ENABLE_WGC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!--
+        注意 include 顺序：$(OpOpenCvIncludeDir) 必须排在 $(OpVcpkgStaticDir)\include 之前。
+        vcpkg 的 x64-windows-static 里也装过 opencv4（opencv_world4），它同样提供 opencv2/*.hpp，
+        若 vcpkg 的 include 在前，<opencv2/xxx.hpp> 会解析到 OpenCV4 头，导致
+        "cv::DistanceTypes enum 类型重定义" 之类的混用错误。
+      -->
+      <AdditionalIncludeDirectories>$(OpRepoRoot)include;$(OpRepoRoot)libop;$(OpRepoRoot)libop\base;$(OpRepoRoot)libop\window;$(OpRepoRoot)libop\image;$(OpRepoRoot)libop\network;$(OpRepoRoot)libop\ocr;$(OpRepoRoot)libop\opencv;$(OpRepoRoot)libop\yolo;$(OpRepoRoot)libop\memory;$(OpRepoRoot)libop\ipc;$(OpRepoRoot)libop\hook;$(OpRepoRoot)3rd_party\kiero2;$(BlackBoneIncludeDir);$(BlackBoneIncludeDir)3rd_party;$(OpOpenCvIncludeDir);$(OpVcpkgStaticDir)\include;$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalOptions>/utf-8 /FS %(AdditionalOptions)</AdditionalOptions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <ConformanceMode>false</ConformanceMode>
+      <MinimalRebuild>false</MinimalRebuild>
+      <OmitFramePointers>false</OmitFramePointers>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <StringPooling>true</StringPooling>
+    </ClCompile>
+    <ResourceCompile>
+      <PreprocessorDefinitions>_UNICODE;UNICODE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(IntDir);$(OpRepoRoot)libop\com;$(OpRepoRoot)libop\c_api;$(OpRepoRoot)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalLibraryDirectories>$(OpOpenCvLibDir);$(OpVcpkgStaticDir)\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <!-- DLL 的导入库统一放到 lib\x64（与旧 CMake install ARCHIVE DESTINATION 一致） -->
+      <ImportLibrary Condition="'$(ConfigurationType)' == 'DynamicLibrary'">$(OpOutDirLib)$(TargetName).lib</ImportLibrary>
+      <!-- 静态依赖：OpenCV 5（含 3rdparty）/ BlackBone / MinHook / WGC(winrt) / dwmapi -->
+      <AdditionalDependencies Condition="'$(OpLinkHeavyDeps)' != 'false'">$(OpOpenCvLibs);$(BlackBoneLib);$(OpMinHookLib);windowsapp.lib;runtimeobject.lib;dwmapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <!-- tools（EasyCom）只需要 MinHook，避免强制依赖 OpenCV/BlackBone -->
+      <AdditionalDependencies Condition="'$(OpLinkHeavyDeps)' == 'false'">$(OpMinHookLib);%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>mfc110d;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <LinkErrorReporting>NoErrorReport</LinkErrorReporting>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)' == 'Debug'" Label="OpDebugCompile">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>false</OptimizeReferences>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)' != 'Debug'" Label="OpReleaseCompile">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <DebugInformationFormat>None</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ========================= COM / MIDL ========================= -->
+  <!--
+    旧 CMake 用 midl.exe 一次生成 op_i.c / op_i.h / op.tlb / op_p.c / dlldata.c 到
+    <build>/com_generated，再让 op.rc 通过 include 路径找到 op.tlb。
+    这里改用自定义 target 生成到 $(IntDir)（可用 Inputs/Outputs 增量），
+    ClCompile 与 ResourceCompile 都 hook 在它之后，保证首次/重复构建都能拿到生成物。
+    需要 MIDL 的工程把 <OpGenerateComIdl>true</OpGenerateComIdl> 打开即可。
+  -->
+  <PropertyGroup Label="OpComIdl">
+    <OpComIdlFile>$(OpRepoRoot)libop\com\op.idl</OpComIdlFile>
+  </PropertyGroup>
+
+  <Target Name="OpGenerateComIdl"
+          Condition="'$(OpGenerateComIdl)' == 'true'"
+          BeforeTargets="ClCompile;ResourceCompile"
+          Inputs="$(OpComIdlFile)"
+          Outputs="$(IntDir)op_i.c;$(IntDir)op_i.h;$(IntDir)op.tlb;$(IntDir)op_p.c;$(IntDir)dlldata.c">
+    <PropertyGroup>
+      <_OpMidlExe Condition="'$(WindowsSdkDir)' != '' and '$(WindowsTargetPlatformVersion)' != '' and Exists('$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\midl.exe')">$(WindowsSdkDir)bin\$(WindowsTargetPlatformVersion)\x64\midl.exe</_OpMidlExe>
+      <_OpMidlExe Condition="'$(_OpMidlExe)' == ''">midl.exe</_OpMidlExe>
+      <!--
+        midl.exe 自身会用 cl.exe 做预处理器，并通过 INCLUDE 找 oaidl.idl 等导入文件。
+        直接由 msbuild 构建时环境里没有 vcvars 的 PATH/INCLUDE，这里显式补齐，
+        保证「Developer 命令行 / 普通命令行 / VS IDE」三种方式都能重复构建。
+      -->
+      <_OpMidlClDir Condition="'$(VCToolsInstallDir)' != '' and Exists('$(VCToolsInstallDir)bin\HostX64\x64\cl.exe')">$(VCToolsInstallDir)bin\HostX64\x64</_OpMidlClDir>
+      <_OpMidlClDir Condition="'$(_OpMidlClDir)' == '' and '$(VC_ExecutablePath_x64)' != ''">$(VC_ExecutablePath_x64)</_OpMidlClDir>
+      <_OpMidlIncludePath Condition="'$(VC_IncludePath)' != ''">$(VC_IncludePath);$(WindowsSDK_IncludePath)</_OpMidlIncludePath>
+      <_OpMidlIncludePath Condition="'$(_OpMidlIncludePath)' == ''">$(IncludePath)</_OpMidlIncludePath>
+    </PropertyGroup>
+    <MakeDir Directories="$(IntDir)" />
+    <Message Importance="high" Text="[OP] MIDL $(OpComIdlFile) -&gt; $(IntDir)op_i.c op_i.h op.tlb op_p.c dlldata.c" />
+    <Exec Command="set &quot;_CL_=/utf-8&quot; &amp;&amp; set &quot;INCLUDE=$(_OpMidlIncludePath)&quot; &amp;&amp; set &quot;PATH=$(_OpMidlClDir);%PATH%&quot; &amp;&amp; &quot;$(_OpMidlExe)&quot; &quot;$(OpComIdlFile)&quot; /iid &quot;$(IntDir)op_i.c&quot; /h &quot;$(IntDir)op_i.h&quot; /tlb &quot;$(IntDir)op.tlb&quot; /proxy &quot;$(IntDir)op_p.c&quot; /dlldata &quot;$(IntDir)dlldata.c&quot; /env win32 /W1 /char signed /Oicf /target NT60 /D NDEBUG /robust /nologo"
+          WorkingDirectory="$(OpRepoRoot)libop\com" />
+  </Target>
+</Project>
