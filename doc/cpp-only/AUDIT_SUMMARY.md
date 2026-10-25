@@ -16,7 +16,7 @@
 ## 1. 结论
 
 - Release / Debug × x64 / Win32 **四个配置均 0 警告 / 0 错误**。
-- `op_test` 共 138 x64 用例 / 137 x86 用例；x64 核心集 13/13 PASS，x86 核心集 10/10 PASS（含大图积分图、DPI、
+- `op_test` 共 139 x64 用例 / 138 x86 用例；x64 核心集 14/14 PASS，x86 核心集 11/11 PASS（含大图积分图、DPI、
   x86 C API 别名、COM IID/注册入口测试）。
 - `cpp_call.exe`：`Ver = 0.4.8.3`、`OpenCV = 5.0.0`。
 - 已修复 2 个 P0、4 个 P1、5 个 P2；剩余项主要是兼容性决策、性能/测试缺口和跨仓库集成。
@@ -42,9 +42,11 @@
 
 ## 2.1 本轮追加优化（2026-10-25 07:00）
 
-- **COM 早期绑定**：旧 `IOpAutomation` 接口已删除；新接口 `IOpAutomation2`，IID
+- **COM 兼容**：旧 `IOpAutomation` 接口已删除；新接口 `IOpAutomation2`，IID
   `59d588f8-b39e-4427-9826-c1fba566318d`，typelib `1.1`，`IDispatchImpl` 1,1；旧 early-binding
-  客户端 QI 旧 IID 时干净失败，late binding 不受影响。
+  客户端 QI 旧 IID 时干净失败。late-binding 按 CLSID + dispid/名字仍可用；`GetIDsOfNames`
+  对已删名字返回 `DISP_E_UNKNOWNNAME`，`Invoke` 对旧 dispid 200/201/220-244 返回
+  `DISP_E_MEMBERNOTFOUND`。测试会临时按用户注册 typelib（不注册 CLSID），结束后注销。
 - **x86 GetProcAddress**：新增 [op_c_api_x86.def](../libop/c_api/op_c_api_x86.def)，同时导出
   `_OpXxx@N` 与 `OpXxx` 别名；x86 共 400 个导出。`UtilsTest.X86CapiUndecoratedAliases` 已验证。
 - **OCR 并发**：配置锁只保护 endpoint/timeout 快照，HTTP 放锁外；最多 4 个在途请求，

@@ -58,6 +58,9 @@ class ATL_NO_VTABLE OpAutomation
     // 抛出异常，异常穿过 COM/静态 CRT 边界是 UB，必须转成 E_FAIL。
     STDMETHOD(Invoke)(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams,
                       VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr) override;
+    // 未注册 typelib 时 ATL 对未知名字会返回 TYPE_E_LIBNOTREGISTERED；
+    // 统一成 COM 标准的 DISP_E_UNKNOWNNAME，保证 late-binding 名字查询行为稳定。
+    STDMETHOD(GetIDsOfNames)(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId) override;
 
     // 1.版本号Version
     STDMETHOD(Ver)(BSTR *ret);

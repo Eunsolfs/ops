@@ -131,4 +131,9 @@
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
+
+  <!-- 测试/独立加载需要 op.tlb 可被发现；MIDL 产物放在 IntDir，复制到 bin。 -->
+  <Target Name="OpCopyTypeLib" AfterTargets="Build" Condition="Exists('$(IntDir)op.tlb')">
+    <Copy SourceFiles="$(IntDir)op.tlb" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

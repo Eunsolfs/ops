@@ -323,7 +323,7 @@ OpenCV   = 5.0.0
   OCR 用例补 `EXPECT_NO_FATAL_FAILURE` 与结果格式断言。
 - 真正的 regsvr32 注册往返因写 HKCR/HKLM 的环境依赖未纳入自动化；测试覆盖
   `DllRegisterServer/DllUnregisterServer` 入口、类工厂与 IID 兼容。
-- 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10；FindPic 3 项 + KeyPressStr 1 项 PASS。
+- 验证：四配置 0 警告/0 错误；x64 核心 14/14、x86 核心 11/11；FindPic 3 项 + KeyPressStr 1 项 PASS。
 - 提交：`3de65a8 feat(perf): FindPic/GDI 缓存、DPI 实际状态、输入等待与测试完善`。
 
 ### 09:00 删除旧 COM 接口名
@@ -331,8 +331,11 @@ OpenCV   = 5.0.0
 - `IOpAutomation` 重命名为 `IOpAutomation2`；旧接口名/IID 不再出现在代码中。
 - 类工厂、COM map、`IDispatchImpl`、`op.idl` coclass、`tools/EasyCom` 同步。
 - 测试改为验证当前 IID 可创建、任意未知 IID 返回 `E_NOINTERFACE`，不再保留旧 IID 字面量。
+- 新增 late-binding 用例：按用户临时注册 typelib（不注册 CLSID）后，按名字 `GetID`/dispid
+  调用成功；已删名字返回 `DISP_E_UNKNOWNNAME`，旧 dispid 200/201/220-244 返回
+  `DISP_E_MEMBERNOTFOUND`；结束自动注销 typelib。
 - 文档（API_CHANGES/README/CLAUDE/AUDIT_SUMMARY）同步为 `IOpAutomation2`。
-- 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10。
+- 验证：四配置 0 警告/0 错误；x64 核心 14/14、x86 核心 11/11。
 - 提交：`ea7d350 refactor(com): 删除旧 IOpAutomation，改用 IOpAutomation2`。
 
 ### 待办清单

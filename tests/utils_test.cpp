@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <map>
+#include <oleauto.h>
 #include <vector>
 
 using namespace std;
@@ -112,6 +113,90 @@ TEST(UtilsTest, ComRegistrationEntryPoints) {
     ::FreeLibrary(module);
 }
 #endif
+
+TEST(UtilsTest, ComLateBindingAndRetiredMembers) {
+    // late-binding：按 CLSID 创建 IDispatch，按名字/dispid 调用保留方法；
+    // 已删除的名字在 GetIDsOfNames 返回 DISP_E_UNKNOWNNAME，按旧 dispid Invoke 返回
+    // DISP_E_MEMBERNOTFOUND（不跳错 vtable）。
+#ifdef _M_IX86
+    constexpr const wchar_t *kComDll = L"op_x86.dll";
+#else
+    constexpr const wchar_t *kComDll = L"op_x64.dll";
+#endif
+    HMODULE module = ::LoadLibraryW(kComDll);
+    ASSERT_NE(module, nullptr);
+    using GetClassObjectFn = HRESULT(STDAPICALLTYPE *)(REFCLSID, REFIID, LPVOID *);
+    auto get_class_object = reinterpret_cast<GetClassObjectFn>(::GetProcAddress(module, "DllGetClassObject"));
+    ASSERT_NE(get_class_object, nullptr);
+
+    IClassFactory *factory = nullptr;
+    ASSERT_TRUE(SUCCEEDED(get_class_object(CLSID_OpAutomation, IID_IClassFactory,
+                                           reinterpret_cast<LPVOID *>(&factory))));
+    IDispatch *dispatch = nullptr;
+    ASSERT_TRUE(SUCCEEDED(factory->CreateInstance(nullptr, IID_IDispatch,
+                                                  reinterpret_cast<LPVOID *>(&dispatch))));
+    ASSERT_NE(dispatch, nullptr);
+
+    // 直接 DllGetClassObject 不经过 regsvr32；仅为测试在当前用户注册 typelib，
+    // 让 ATL 的 IDispatch::Invoke 能按 dispid 找到类型信息。结束后注销。
+    ITypeLib *type_lib = nullptr;
+    TLIBATTR *type_attr = nullptr;
+    bool typelib_registered_here = false;
+    bool typelib_ready = false;
+    if (SUCCEEDED(::LoadTypeLibEx(L"op.tlb", REGKIND_NONE, &type_lib)) && type_lib &&
+        SUCCEEDED(type_lib->GetLibAttr(&type_attr)) && type_attr) {
+        wchar_t lib_guid[64] = {};
+        ::StringFromGUID2(type_attr->guid, lib_guid, 64);
+        wchar_t key_path[160] = {};
+        swprintf_s(key_path, L"Software\\Classes\\TypeLib\\%s\\1.1", lib_guid);
+        HKEY existing = nullptr;
+        const bool already = ::RegOpenKeyExW(HKEY_CURRENT_USER, key_path, 0, KEY_READ, &existing) == ERROR_SUCCESS;
+        if (existing)
+            ::RegCloseKey(existing);
+        typelib_ready = already;
+        if (!already && SUCCEEDED(::RegisterTypeLibForUser(type_lib, L"op.tlb", nullptr))) {
+            typelib_registered_here = true;
+            typelib_ready = true;
+        }
+    }
+
+    LPOLESTR getid_name = const_cast<LPOLESTR>(L"GetID");
+    DISPID getid_disp = 0;
+    EXPECT_TRUE(SUCCEEDED(dispatch->GetIDsOfNames(IID_NULL, &getid_name, 1, LOCALE_USER_DEFAULT, &getid_disp)));
+    EXPECT_EQ(getid_disp, 5);
+
+    DISPPARAMS empty = {};
+    const WORD invoke_flags = DISPATCH_METHOD;
+    VARIANT result;
+    VariantInit(&result);
+    if (typelib_ready) {
+        EXPECT_TRUE(SUCCEEDED(dispatch->Invoke(getid_disp, IID_NULL, LOCALE_USER_DEFAULT, invoke_flags, &empty, &result,
+                                               nullptr, nullptr)));
+        EXPECT_EQ(result.vt, VT_I4);
+    }
+    VariantClear(&result);
+
+    LPOLESTR retired_name = const_cast<LPOLESTR>(L"SetDict");
+    DISPID retired_disp = 0;
+    EXPECT_EQ(dispatch->GetIDsOfNames(IID_NULL, &retired_name, 1, LOCALE_USER_DEFAULT, &retired_disp),
+              DISP_E_UNKNOWNNAME);
+
+    VariantInit(&result);
+    EXPECT_EQ(dispatch->Invoke(200, IID_NULL, LOCALE_USER_DEFAULT, invoke_flags, &empty, &result, nullptr, nullptr),
+              DISP_E_MEMBERNOTFOUND);
+    VariantClear(&result);
+
+    dispatch->Release();
+    factory->Release();
+    if (typelib_registered_here && type_attr)
+        ::UnRegisterTypeLibForUser(type_attr->guid, type_attr->wMajorVerNum, type_attr->wMinorVerNum,
+                                   type_attr->lcid, type_attr->syskind);
+    if (type_attr && type_lib)
+        type_lib->ReleaseTLibAttr(type_attr);
+    if (type_lib)
+        type_lib->Release();
+    ::FreeLibrary(module);
+}
 
 TEST(UtilsTest, RectDivideBlock) {
     op::rect_t rc(0, 0, 100, 100);

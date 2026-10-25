@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <unordered_map>
 // OpAutomation
 using std::wstring;
 
@@ -46,6 +47,11 @@ OpAutomation::OpAutomation() {
 
 STDMETHODIMP OpAutomation::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams,
                                  VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr) {
+    // 已删除的 27 个 dispid：显式返回 MEMBERNOTFOUND，不进入 ATL/typelib 查找。
+    if (dispIdMember == 200 || dispIdMember == 201 ||
+        (dispIdMember >= 220 && dispIdMember <= 244)) {
+        return DISP_E_MEMBERNOTFOUND;
+    }
     try {
         return IDispatchImpl<IOpAutomation2, &IID_IOpAutomation2, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1>::Invoke(
             dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
@@ -53,6 +59,34 @@ STDMETHODIMP OpAutomation::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, W
         // 不让 C++ 异常跨 IDispatch/静态 CRT 边界。
         return E_FAIL;
     }
+}
+
+STDMETHODIMP OpAutomation::GetIDsOfNames(REFIID riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid,
+                                        DISPID *rgDispId) {
+    (void)lcid;
+    if (!rgszNames || !rgDispId || cNames == 0)
+        return E_INVALIDARG;
+    if (!IsEqualIID(riid, IID_NULL))
+        return DISP_E_UNKNOWNINTERFACE;
+
+    // 不依赖 typelib 注册：只暴露当前 IOpAutomation2 的方法名。
+    // 已删除的 27 个方法不在表里，名字查询会稳定返回 DISP_E_UNKNOWNNAME。
+    static const std::unordered_map<std::wstring, DISPID> kNames = {
+#include "OpAutomationNames.inc"
+    };
+
+    HRESULT result = S_OK;
+    for (UINT i = 0; i < cNames; ++i) {
+        const std::wstring name = rgszNames[i] ? rgszNames[i] : L"";
+        const auto it = kNames.find(name);
+        if (it == kNames.end()) {
+            rgDispId[i] = DISPID_UNKNOWN;
+            result = DISP_E_UNKNOWNNAME;
+        } else {
+            rgDispId[i] = it->second;
+        }
+    }
+    return result;
 }
 
 STDMETHODIMP OpAutomation::Ver(BSTR *ret) {

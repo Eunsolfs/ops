@@ -187,8 +187,8 @@ OpDestroy(h);
 - x86：`MSBuild op.sln /t:Rebuild /p:Configuration=Release /p:Platform=Win32 /m`
   → **0 error / 0 warning**；`bin/x86/op_x86.dll`、`op_c_api_x86.dll`、`cpp_call.exe`、
   `op_test.exe` 均生成；x86 `cpp_call.exe` 输出同样为 `0.4.8.3 / 5.0.0`。
-- tests：`tests/op_test.vcxproj` Release|x64 / Win32 均 0/0；gtest 13 suites / 138 x64 用例
-  （137 x86）；
+- tests：`tests/op_test.vcxproj` Release|x64 / Win32 均 0/0；gtest 13 suites / 139 x64 用例
+  （138 x86）；
   x64 核心+扩展 16/16 PASS，x86 15 PASS + 1 SKIP（32 位架构跳过）。
 - Twinkle.sln：`/t:"OP\op_c_api_x64"` 与 `/t:Twinkle_CLI` Release|x64 均 PASS；
   PostBuild 同步的 dll/lib 与 ops 产物 hash 一致。
