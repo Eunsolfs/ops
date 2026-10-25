@@ -333,6 +333,7 @@ OpenCV   = 5.0.0
 - 测试改为验证当前 IID 可创建、任意未知 IID 返回 `E_NOINTERFACE`，不再保留旧 IID 字面量。
 - 文档（API_CHANGES/README/CLAUDE/AUDIT_SUMMARY）同步为 `IOpAutomation2`。
 - 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10。
+- 提交：`ea7d350 refactor(com): 删除旧 IOpAutomation，改用 IOpAutomation2`。
 
 ### 待办清单
 
