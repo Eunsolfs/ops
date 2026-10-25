@@ -162,17 +162,25 @@ class ImageSearchAlgorithms {
     // 输出：outStr:直线描述[法线角度，直线到原点的距离];ret:该直线上的点的数量
     long long FindLine(std::wstring &outStr);
 
+    // FindPic 的灰度/积分图缓存：同一 frameId 只做一次 fromImage4+record_sum。
+    void set_frame_id(unsigned int frame_id);
+    void invalidate_frame_cache();
+    void prepare_gray_cache();
+
+    // 积分图测试/诊断入口（内部使用）：大图溢出回归直接验证。
+    // gray_source=true 表示该积分图来自 FindPic 的灰度图，可供帧缓存复用。
+    void record_sum(const ImageBin &gray, bool gray_source = false);
+    //[x1,x2),[y1,y2)
+    long long region_sum(int x1, int y1, int x2, int y2);
+
   private:
     // 透明图匹配
     template <bool nodfcolor>
     long trans_match(long x, long y, Image *timg, color_t dfcolor, const vector<uint> &points, int max_error);
     // 灰度匹配
     long real_match(long x, long y, ImageBin *timg, long long tnorm, double sim);
-    // 记录和
-    void record_sum(const ImageBin &gray);
-    //[x1,x2),[y1,y2)
-    long long region_sum(int x1, int y1, int x2, int y2);
 
+  private:
     int get_bk_color(inputbin bin);
 
   public:
@@ -189,6 +197,14 @@ class ImageSearchAlgorithms {
     ImageBin _gray;
     ImageBin _binary;
     ImageSum _sum;
+    // 同一帧的灰度/积分图缓存；frameId 或源图变化时失效。
+    unsigned int _frame_id = 0;
+    unsigned int _gray_frame_id = ~0u;
+    unsigned int _fallback_frame_id = 0;
+    bool _sum_is_gray = false;
+    const void *_gray_src = nullptr;
+    int _gray_width = 0;
+    int _gray_height = 0;
     // 起始点
     int _x1, _y1;
     // 偏移

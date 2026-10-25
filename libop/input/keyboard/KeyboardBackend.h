@@ -27,6 +27,9 @@ class KeyboardBackend {
 
     virtual long InputChar(wchar_t ch) = 0;
 
+    // 批量输入；默认逐字符 InputChar，delay_ms>0 时字符间 Delay。
+    virtual long InputString(const wchar_t *text, long delay_ms);
+
   protected:
     HWND _hwnd;
     int _mode;

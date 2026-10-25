@@ -55,6 +55,37 @@ bool process_dpi_aware_enabled() {
     return g_dpi_aware_enabled;
 }
 
+bool process_dpi_aware_actual() {
+    // Win10 1607+: 当前线程的 awareness context 最准确；动态取地址，兼容旧系统。
+    HMODULE user32 = ::GetModuleHandleW(L"user32.dll");
+    if (user32) {
+        using GetThreadDpiAwarenessContextFn = HANDLE(WINAPI *)();
+        using GetAwarenessFromDpiAwarenessContextFn = int(WINAPI *)(HANDLE);
+        auto get_context = reinterpret_cast<GetThreadDpiAwarenessContextFn>(
+            ::GetProcAddress(user32, "GetThreadDpiAwarenessContext"));
+        auto get_awareness = reinterpret_cast<GetAwarenessFromDpiAwarenessContextFn>(
+            ::GetProcAddress(user32, "GetAwarenessFromDpiAwarenessContext"));
+        if (get_context && get_awareness) {
+            const HANDLE context = get_context();
+            const int awareness = context ? get_awareness(context) : -1;
+            if (awareness >= 0) {
+                // 0=UNAWARE, 1=SYSTEM_AWARE, 2=PER_MONITOR_AWARE, 3=PER_MONITOR_V2
+                return awareness > 0;
+            }
+        }
+    }
+
+    // Vista 回退：IsProcessDPIAware。
+    if (user32) {
+        using IsProcessDpiAwareFn = BOOL(WINAPI *)();
+        auto is_aware = reinterpret_cast<IsProcessDpiAwareFn>(::GetProcAddress(user32, "IsProcessDPIAware"));
+        if (is_aware) {
+            return is_aware() != FALSE;
+        }
+    }
+    return false;
+}
+
 void apply_process_dpi_aware_once() {
     std::lock_guard<std::mutex> lock(g_dpi_mutex);
     if (g_dpi_aware_locked) {

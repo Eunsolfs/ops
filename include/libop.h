@@ -100,6 +100,7 @@ class OP_API Op {
     // 默认 false：OP 不修改宿主的 DPI 感知，由宿主通过 manifest / API 决定；
     // true：第一次创建 Op 时调用 SetProcessDPIAware()，OP 截图/输入使用物理像素。
     static bool SetProcessDpiAware(bool enable);
+    // 查询实际 OS 状态（不是配置值）：0=unaware，1=aware。
     static bool IsProcessDpiAware();
     // 设置目录
     void SetPath(_In_ const wchar_t *path, _Out_ long *ret);

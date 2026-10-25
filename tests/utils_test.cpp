@@ -2,8 +2,13 @@
 
 #include "../libop/base/ThreadPool.h"
 #include "../libop/base/Utils.h"
+#include "../libop/image/ImageSearchAlgorithms.h"
+#include "../include/op_c_api.h"
 #include "op_i.h"
 
+#include <algorithm>
+#include <iostream>
+#include <limits>
 #include <map>
 #include <vector>
 
@@ -33,6 +38,28 @@ TEST(UtilsTest, PointStrictWeakOrder) {
     points[b] = 2;
     points[c] = 3;
     EXPECT_EQ(points.size(), 3u);
+}
+
+TEST(UtilsTest, DpiAwarenessQueryMatchesOsState) {
+    // 用 C API 创建 Op，确保 C API 自己的 DPI 配置被锁定；OpGet 返回实际 OS 状态。
+    op_handle handle = OpCreate();
+    ASSERT_NE(handle, nullptr);
+    EXPECT_EQ(OpSetProcessDpiAware(1), 0);
+    EXPECT_EQ(op::Op::IsProcessDpiAware(), OpGetProcessDpiAware() != 0);
+    OpDestroy(handle);
+}
+
+TEST(UtilsTest, IntegralImageHandlesBeyondInt32) {
+    // 4096x2160 全 255：总和 2,256,076,800 > INT_MAX，旧 int32 积分图会回绕。
+    op::ImageBin bin;
+    bin.create(4096, 2160);
+    std::fill(bin.pixels.begin(), bin.pixels.end(), static_cast<unsigned char>(255));
+
+    op::image::ImageSearchAlgorithms alg;
+    alg.record_sum(bin);
+    const long long expected = 4096LL * 2160 * 255;
+    EXPECT_GT(expected, static_cast<long long>(std::numeric_limits<int>::max()));
+    EXPECT_EQ(alg.region_sum(0, 0, 4096, 2160), expected);
 }
 
 #ifdef _M_IX86
@@ -70,6 +97,18 @@ TEST(UtilsTest, ComIidBumpedForEarlyBinding) {
     if (current)
         current->Release();
     factory->Release();
+    ::FreeLibrary(module);
+}
+
+TEST(UtilsTest, ComRegistrationEntryPoints) {
+    // 注册/卸载入口存在，且类工厂可创建对象；真正的 regsvr32 需要写 HKCR/HKLM，
+    // 属于环境相关操作，不在此测试里执行（避免污染测试机注册表）。
+    HMODULE module = ::LoadLibraryW(L"op_x64.dll");
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(::GetProcAddress(module, "DllRegisterServer"), nullptr);
+    EXPECT_NE(::GetProcAddress(module, "DllUnregisterServer"), nullptr);
+    EXPECT_NE(::GetProcAddress(module, "DllGetClassObject"), nullptr);
+    EXPECT_NE(::GetProcAddress(module, "DllCanUnloadNow"), nullptr);
     ::FreeLibrary(module);
 }
 #endif

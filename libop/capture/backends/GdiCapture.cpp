@@ -137,6 +137,8 @@ long GdiCapture::BindEx(HWND hwnd, long render_type) {
 long GdiCapture::UnBindEx() {
     // setlog("bkgdi::UnBindEx()");
     release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
+    _bmp_width = 0;
+    _bmp_height = 0;
 
     // GetDC 得到的窗口/桌面 DC 必须用 ReleaseDC 归还。
     if (_hdc) {
@@ -165,22 +167,14 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         return false;
     }
     if (_render_type == RDT_NORMAL) { // normal 拷贝的大小为实际需要的大小
-        release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
 
         //
         /*	int w = rect.right - rect.left;
                 int h = rect.bottom - rect.top;*/
-        _hbmpscreen = CreateCompatibleBitmap(_hdc, w, h); // 创建与指定的设备环境相关的设备兼容的位图
-        if (!_hbmpscreen) {
-            setlog("CreateCompatibleBitmap false");
+        // setlog("_w w=%d %d _h h=%d %d,dx=%d dy=%d", _width, w, _height, h, dx_,
+        // dy_);
+        if (!ensure_capture_bitmap(w, h))
             return false;
-        }
-        _hbmp_old = (HBITMAP)SelectObject(_hmdc, _hbmpscreen); // 选择一对象到指定的设备上下文环境中
-        if (!_hbmp_old) {
-            setlog("SelectObject false");
-            release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
-            return false;
-        }
 
         _bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
         _bfh.bfSize = _bfh.bfOffBits + w * h * 4;
@@ -218,7 +212,6 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
                   (DWORD)DIB_RGB_COLORS);
 
         //_pmutex->unlock();
-        release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
 
         // 将数据拷贝到目标注意实际数据是反的
         auto pixels = shared_pixels(_shmem, w, h);
@@ -234,6 +227,8 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         BitBlt(image.GetDC(), 0, 0, w, h, _hdc, x1, y1, SRCCOPY);
         img.read(&image);
         image.ReleaseDC();
+        // 该分支不写像素到共享内存，但仍需推进 frameId，避免 FindPic 灰度缓存跨帧复用。
+        fmtFrameInfo(_shmem->data<byte>(), _hwnd, w, h);
     } else { // gdi ... 由于printwindow 函数的原因
              // 截取大小为实际的窗口大小，在后续的处理中，需要转化成客户区大小
         //
@@ -259,20 +254,10 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
                    h, ww, wh);
             return false;
         }
-        release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
         // setlog("_w w=%d %d _h h=%d %d,dx=%d dy=%d", _width, w, _height, h, dx_,
         // dy_);
-        _hbmpscreen = CreateCompatibleBitmap(_hdc, ww, wh); // 创建与指定的设备环境相关的设备兼容的位图
-        if (!_hbmpscreen) {
-            setlog("CreateCompatibleBitmap false");
+        if (!ensure_capture_bitmap(ww, wh))
             return false;
-        }
-        _hbmp_old = (HBITMAP)SelectObject(_hmdc, _hbmpscreen); // 选择一对象到指定的设备上下文环境中
-        if (!_hbmp_old) {
-            setlog("SelectObject false");
-            release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
-            return false;
-        }
 
         _bfh.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
         _bfh.bfSize = _bfh.bfOffBits + ww * wh * 4;
@@ -304,8 +289,6 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         GetDIBits(_hmdc, _hbmpscreen, 0L, (DWORD)wh, pshare + sizeof(FrameInfo), (LPBITMAPINFO)&_bih,
                   (DWORD)DIB_RGB_COLORS);
 
-        release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
-
         // 将数据拷贝到目标注意实际数据是反的(注意偏移)
         auto pixels = shared_pixels(_shmem, ww, wh);
         for (int i = 0; i < h; i++) {
@@ -315,6 +298,34 @@ bool GdiCapture::requestCapture(int x1, int y1, int w, int h, Image &img) {
         }
     }
     return 1;
+}
+
+bool GdiCapture::ensure_capture_bitmap(int w, int h) {
+    if (w <= 0 || h <= 0)
+        return false;
+
+    // 同尺寸复用：截图循环里不再每次 CreateCompatibleBitmap/DeleteObject。
+    if (_hbmpscreen && _bmp_width == w && _bmp_height == h)
+        return true;
+
+    release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
+    _bmp_width = 0;
+    _bmp_height = 0;
+
+    _hbmpscreen = CreateCompatibleBitmap(_hdc, w, h);
+    if (!_hbmpscreen) {
+        setlog("CreateCompatibleBitmap false");
+        return false;
+    }
+    _hbmp_old = static_cast<HBITMAP>(SelectObject(_hmdc, _hbmpscreen));
+    if (!_hbmp_old) {
+        setlog("SelectObject false");
+        release_capture_bitmap(_hmdc, _hbmpscreen, _hbmp_old);
+        return false;
+    }
+    _bmp_width = w;
+    _bmp_height = h;
+    return true;
 }
 
 bool GdiCapture::ensure_shared_capacity(size_t required) {

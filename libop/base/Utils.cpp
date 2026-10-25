@@ -256,14 +256,26 @@ std::string GetLastErrorAsString() {
 }
 
 bool Delay(long mis) {
+    if (mis <= 0)
+        return true;
+
     MSG msg = {};
-    auto deadline = ::GetTickCount64() + mis;
-    while (::GetTickCount64() < deadline) {
-        // 除收到'WM_QUIT'消息，结果始终都是大于0的
-        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE) > 0) {
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+    const ULONGLONG deadline = ::GetTickCount64() + static_cast<ULONGLONG>(mis);
+    while (true) {
+        // 先抽干消息队列；WM_QUIT 也交给宿主，保持旧语义。
+        while (::PeekMessageW(&msg, nullptr, 0, 0, PM_REMOVE) != 0) {
+            ::TranslateMessage(&msg);
+            ::DispatchMessageW(&msg);
         }
+
+        const ULONGLONG now = ::GetTickCount64();
+        if (now >= deadline)
+            break;
+
+        const ULONGLONG remaining = deadline - now;
+        const DWORD wait_ms = static_cast<DWORD>(remaining > 0xFFFFFFFFULL ? 0xFFFFFFFFULL : remaining);
+        // 等待消息或超时，不再用 PeekMessage 忙等占满一核。
+        ::MsgWaitForMultipleObjectsEx(0, nullptr, wait_ms, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
     }
     return true;
 }

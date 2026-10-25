@@ -306,6 +306,25 @@ OpenCV   = 5.0.0
 - 遗留：`check_bind` 隐式桌面绑定、HTTP JSON/响应上限、FindPic/frameId 性能、`Delay` 忙等、
   DPI 实际状态、C API 线程安全/返回值生命周期文档、大图积分图测试、COM 注册用例。
 
+### 08:30 按用户选择继续优化
+
+- 不做：`check_bind()` 隐式桌面绑定（用户确认不需要）；HTTP OCR JSON parser/响应上限（暂不做）。
+- FindPic 帧缓存：`capture_region` 把 `FrameInfo.frameId` 传给 `ImageSearchService`；同帧复用
+  `_gray` + 灰度积分图，`FindColorBlock`/`FindLine` 覆写 `_sum` 后自动重建。
+- GDI 位图复用：`GdiCapture::ensure_capture_bitmap` 同尺寸复用兼容位图，窗口 resize 才重建；
+  `RDT_GDI_DX2` 也推进 frameId。
+- DPI 实际状态：`OpGetProcessDpiAware` / `IsProcessDpiAware` 改为查询 OS
+  （`GetThreadDpiAwarenessContext`，回退 `IsProcessDPIAware`）。
+- C API 契约：`op_c_api.h` 补充线程安全、`const wchar_t*` 生命周期、句柄销毁约束。
+- Delay：`PeekMessage` 忙等改 `MsgWaitForMultipleObjectsEx`。
+- KeyPressStr：NORMAL/NORMAL2 无字符延迟时合并为批量 `SendInput`；windows/dx/有延迟仍逐字符。
+- 测试：新增大图积分图（4096x2160）、DPI 实际状态、COM 注册入口、COM IID、x86 别名；
+  OCR 用例补 `EXPECT_NO_FATAL_FAILURE` 与结果格式断言。
+- 真正的 regsvr32 注册往返因写 HKCR/HKLM 的环境依赖未纳入自动化；测试覆盖
+  `DllRegisterServer/DllUnregisterServer` 入口、类工厂与 IID 兼容。
+- 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10；FindPic 3 项 + KeyPressStr 1 项 PASS。
+- 提交：见下一次 git log。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
@@ -328,4 +347,11 @@ OpenCV   = 5.0.0
 - [x] OCR HTTP 串行化改造（4 并发槽）
 - [x] 积分图 int32 → int64
 - [x] COM `Invoke` 统一 try/catch
-- [ ] `check_bind` 隐式桌面绑定、HTTP JSON/响应上限、FindPic/frameId 性能
+- [x] FindPic frameId 缓存 + GDI 位图复用
+- [x] DPI 实际状态查询
+- [x] C API 线程安全/返回值生命周期文档
+- [x] Delay 事件等待 + KeyPressStr 批量输入
+- [x] 大图积分图 / COM 注册入口 / OCR 断言
+- [ ] `check_bind` 隐式桌面绑定（用户确认不做）
+- [ ] HTTP OCR JSON parser/响应上限（用户确认暂不做）
+- [ ] 真正的 regsvr32 注册往返（环境相关，未自动化）

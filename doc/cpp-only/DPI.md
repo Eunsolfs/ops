@@ -36,9 +36,9 @@ OP_C_API int OP_CALL OpSetProcessDpiAware(int enable);
 OP_C_API int OP_CALL OpGetProcessDpiAware(void);
 ```
 
-> `OpGetProcessDpiAware` 返回的是 OP 内部的配置值（0/1），不是 OS 实际状态；
-> 查 OS 实际状态用 `GetThreadDpiAwarenessContext` +
-> `GetAwarenessFromDpiAwarenessContext`（验证探针就是这么做的）。
+> `OpGetProcessDpiAware` 现在返回 **OS 实际状态**（0=unaware，1=aware）：
+> 优先用 `GetThreadDpiAwarenessContext` + `GetAwarenessFromDpiAwarenessContext`，
+> 旧系统回退 `IsProcessDPIAware`。它不再返回 OP 内部配置值。
 
 ### C++（`include/libop.h`）
 

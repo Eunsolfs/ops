@@ -2,6 +2,7 @@
 
 #include "OpContext.h"
 #include "base/Utils.h"
+#include "../capture/FrameInfo.h"
 
 #include <algorithm>
 #include <utility>
@@ -20,6 +21,13 @@ void capture_region(OpContext *context, long x, long y, long width, long height,
 
     // 截图偏移必须和成功捕获后的坐标保持一致，后续找图、找色会用它还原窗口坐标。
     context->image_proc.set_offset(x, y);
+
+    // 把捕获帧号交给 ImageSearchService，FindPic 可在同一帧内复用灰度/积分图。
+    if (context->bkproc._capture) {
+        op::capture::FrameInfo info{};
+        context->bkproc._capture->getFrameInfo(info);
+        context->image_proc.set_frame_id(info.frameId);
+    }
     std::forward<Fn>(fn)();
 }
 

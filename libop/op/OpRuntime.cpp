@@ -17,7 +17,7 @@ bool op::Op::SetProcessDpiAware(bool enable) {
 }
 
 bool op::Op::IsProcessDpiAware() {
-    return internal::process_dpi_aware_enabled();
+    return internal::process_dpi_aware_actual();
 }
 
 void op::Op::SetPath(const wchar_t *path, long *ret) {

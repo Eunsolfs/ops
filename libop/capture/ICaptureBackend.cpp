@@ -102,6 +102,10 @@ long ICaptureBackend::bind_release() {
 }
 
 void ICaptureBackend::getFrameInfo(FrameInfo &info) {
+    if (!_pmutex || !_shmem) {
+        info = FrameInfo{};
+        return;
+    }
     _pmutex->lock();
     memcpy(&info, _shmem->data<uchar>(), sizeof(FrameInfo));
     _pmutex->unlock();

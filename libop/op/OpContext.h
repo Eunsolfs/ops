@@ -17,6 +17,8 @@ namespace op::internal {
 // 返回 false 表示已经创建过 Op（或已被其他组件锁定）。
 bool set_process_dpi_aware(bool enable);
 bool process_dpi_aware_enabled();
+// 查询进程/当前线程的实际 DPI 感知状态（不是“配置值”）。
+bool process_dpi_aware_actual();
 // 第一次创建 OpContext 时调用：按配置决定是否调用 SetProcessDPIAware()，
 // 并锁定配置，之后不能再改。
 void apply_process_dpi_aware_once();

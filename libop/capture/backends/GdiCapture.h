@@ -29,6 +29,10 @@ class GdiCapture : public ICaptureBackend {
     // 位图句柄
     HBITMAP _hbmpscreen = NULL;
     HBITMAP _hbmp_old = NULL;
+    int _bmp_width = 0;
+    int _bmp_height = 0;
+    // 复用同尺寸的兼容位图，避免每次截图都 CreateCompatibleBitmap/DeleteObject。
+    bool ensure_capture_bitmap(int w, int h);
     // bmp 文件头
     BITMAPFILEHEADER _bfh = {0};
     BITMAPINFOHEADER _bih = {0}; // 位图信息头

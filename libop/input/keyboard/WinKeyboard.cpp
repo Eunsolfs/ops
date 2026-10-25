@@ -4,6 +4,7 @@
 #include "../../base/AutomationModes.h"
 #include "../../base/Utils.h"
 #include <string>
+#include <vector>
 
 static unsigned int oem_code(unsigned int key) {
     short code[256] = {0};
@@ -283,6 +284,42 @@ long WinKeyboard::InputChar(wchar_t ch) {
         return message::SendTimeout(_hwnd, WM_CHAR, static_cast<WPARAM>(ch), 1);
     }
     return 0;
+}
+
+long WinKeyboard::InputString(const wchar_t *text, long delay_ms) {
+    if (!text || !*text)
+        return 0;
+
+    // IN_WINDOWS/未绑定模式需要逐字符；有字符间延迟时也退回逐字符。
+    if ((_mode != INPUT_TYPE::IN_NORMAL && _mode != INPUT_TYPE::IN_NORMAL2) || delay_ms > 0)
+        return KeyboardBackend::InputString(text, delay_ms);
+
+    // IN_NORMAL / IN_NORMAL2 都是 Unicode SendInput：把整串合并成一批，
+    // 减少逐字符用户态/内核切换。分块避免单次数组过大。
+    constexpr size_t kCharsPerBatch = 256;
+    std::vector<INPUT> inputs;
+    inputs.reserve(kCharsPerBatch * 2);
+
+    for (const wchar_t *p = text; *p; ++p) {
+        INPUT down = {};
+        down.type = INPUT_KEYBOARD;
+        down.ki.wVk = 0;
+        down.ki.wScan = static_cast<WORD>(*p);
+        down.ki.dwFlags = KEYEVENTF_UNICODE;
+        inputs.push_back(down);
+        down.ki.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+        inputs.push_back(down);
+
+        if (inputs.size() >= kCharsPerBatch * 2) {
+            if (::SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT)) != inputs.size())
+                return 0;
+            inputs.clear();
+        }
+    }
+    if (!inputs.empty() &&
+        ::SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT)) != inputs.size())
+        return 0;
+    return 1;
 }
 
 } // namespace op::input

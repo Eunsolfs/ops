@@ -152,6 +152,7 @@
     <!-- 这些实现没有 OP_API 导出，测试直接调用，因此与旧 CMake 一样在测试目标里重编 -->
     <ClCompile Include="$(OpRepoRoot)libop\window\WindowLayout.cpp" />
     <ClCompile Include="$(OpRepoRoot)libop\input\mouse\CursorShape.cpp" />
+    <ClCompile Include="$(OpRepoRoot)libop\image\ImageSearchAlgorithms.cpp" />
     <ClCompile Include="$(OpRepoRoot)libop\opencv\OpenCvHelpers.cpp" />
     <ClCompile Include="$(OpRepoRoot)libop\opencv\TemplateMatcher.cpp" />
   </ItemGroup>

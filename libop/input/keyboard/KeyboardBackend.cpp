@@ -1,5 +1,6 @@
 // #include "stdafx.h"
 #include "KeyboardBackend.h"
+#include "../../base/Utils.h"
 // #include "AutomationModes.h"
 // #include "Utils.h"
 //
@@ -48,6 +49,19 @@ KeyboardBackend::~KeyboardBackend() {
 long KeyboardBackend::UnBind() {
     _hwnd = NULL;
     _mode = 0;
+    return 1;
+}
+
+long KeyboardBackend::InputString(const wchar_t *text, long delay_ms) {
+    if (!text || !*text)
+        return 0;
+
+    for (const wchar_t *p = text; *p; ++p) {
+        if (InputChar(*p) == 0)
+            return 0;
+        if (p[1] && delay_ms > 0)
+            ::Delay(delay_ms);
+    }
     return 1;
 }
 

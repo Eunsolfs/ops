@@ -24,19 +24,19 @@ void ExpectHelloWorldDigits(const std::wstring &text) {
 
 TEST_F(OcrFixture, Ocr) {
     wstring text;
-    op.Ocr(0, 0, 100, 100, L"ffffff-000000", 0.8, text);
+    EXPECT_NO_FATAL_FAILURE(op.Ocr(0, 0, 100, 100, L"ffffff-000000", 0.8, text));
     wcout << L"Ocr(0,0,100,100): " << (text.empty() ? L"(empty)" : text) << endl;
 }
 
 TEST_F(OcrFixture, OcrEx) {
     wstring text;
-    op.OcrEx(0, 0, 100, 100, L"ffffff-000000", 0.8, text);
+    EXPECT_NO_FATAL_FAILURE(op.OcrEx(0, 0, 100, 100, L"ffffff-000000", 0.8, text));
     wcout << L"OcrEx(0,0,100,100): " << (text.empty() ? L"(empty)" : text.substr(0, 50)) << endl;
 }
 
 TEST_F(OcrFixture, OcrAuto) {
     wstring text;
-    op.OcrAuto(0, 0, 100, 100, 0.8, text);
+    EXPECT_NO_FATAL_FAILURE(op.OcrAuto(0, 0, 100, 100, 0.8, text));
     wcout << L"OcrAuto(0,0,100,100): " << (text.empty() ? L"(empty)" : text) << endl;
 }
 
@@ -74,13 +74,20 @@ TEST_F(OcrFixture, OcrAutoFromFile) {
 TEST_F(OcrFixture, FindStr) {
     long find_x = 0;
     long find_y = 0;
-    op.FindStr(0, 0, 200, 200, L"test", L"ffffff-000000", 0.8, &find_x, &find_y, &ret);
+    EXPECT_NO_FATAL_FAILURE(op.FindStr(0, 0, 200, 200, L"test", L"ffffff-000000", 0.8, &find_x, &find_y, &ret));
+    EXPECT_GE(ret, -1);
+    if (ret >= 0) {
+        EXPECT_GE(find_x, 0);
+        EXPECT_GE(find_y, 0);
+    }
     cout << "FindStr(test): ret=" << ret << " at (" << find_x << "," << find_y << ")" << endl;
 }
 
 TEST_F(OcrFixture, FindStrEx) {
     wstring find_results;
-    op.FindStrEx(0, 0, 200, 200, L"test|demo", L"ffffff-000000", 0.8, find_results);
+    EXPECT_NO_FATAL_FAILURE(op.FindStrEx(0, 0, 200, 200, L"test|demo", L"ffffff-000000", 0.8, find_results));
+    if (!find_results.empty())
+        EXPECT_NE(find_results.back(), L'|');
     wcout << L"FindStrEx(test|demo): " << (find_results.empty() ? L"(empty)" : find_results.substr(0, 30))
           << L"..." << endl;
 }

@@ -541,6 +541,7 @@ long ImageSearchService::OcrFromFile(const wstring &files, const wstring &color,
     if (Path2GlobalPath(files, _curr_path, fullpath)) {
         if (!_src.read(fullpath.data()))
             return 0;
+        invalidate_frame_cache();
         return OCR(color, sim, retstr);
     }
     return 0;
@@ -555,6 +556,7 @@ long ImageSearchService::OcrAutoFromFile(const wstring &files, double sim, std::
     if (Path2GlobalPath(files, _curr_path, fullpath)) {
         if (!_src.read(fullpath.data()))
             return 0;
+        invalidate_frame_cache();
         return OCR(L"", sim, retstr);
     }
     return 0;

@@ -230,6 +230,7 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
 - 默认 `0`：不调用 `SetProcessDPIAware()`，不修改宿主 DPI 感知。
 - `1`：第一次创建 Op 时调用 `SetProcessDPIAware()`，OP 使用物理像素。
 - 创建过 Op 后再调用返回 `0`，无法撤销。
+- `OpGetProcessDpiAware` / `IsProcessDpiAware` 查询 **OS 实际状态**（0/1），不是配置值。
 - 详细说明见 [DPI.md](DPI.md)。
 
 ## 6. x86 导出名（GetProcAddress）

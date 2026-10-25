@@ -702,6 +702,42 @@ long ImageSearchAlgorithms::FindMultiColorEx(std::vector<color_df_t> &first_colo
     // x = y = -1;
 }
 
+void ImageSearchAlgorithms::invalidate_frame_cache() {
+    _gray_frame_id = ~0u;
+    _gray_src = nullptr;
+    _gray_width = 0;
+    _gray_height = 0;
+    _sum_is_gray = false;
+}
+
+void ImageSearchAlgorithms::set_frame_id(unsigned int frame_id) {
+    // 没有 frameId 的采集源（memory/pic）使用递减合成值，保证每次换图都失效。
+    if (frame_id == 0)
+        frame_id = ~(_fallback_frame_id++);
+
+    if (frame_id != _frame_id) {
+        _frame_id = frame_id;
+        invalidate_frame_cache();
+    }
+}
+
+void ImageSearchAlgorithms::prepare_gray_cache() {
+    if (_gray_frame_id == _frame_id && _gray_src == _src.pdata && _gray_width == _src.width &&
+        _gray_height == _src.height && !_gray.empty()) {
+        // _gray 命中但 _sum 可能已被 FindColorBlock/FindLine 覆写，需要重建灰度积分图。
+        if (!_sum_is_gray)
+            record_sum(_gray, true);
+        return;
+    }
+
+    _gray.fromImage4(_src);
+    record_sum(_gray, true);
+    _gray_frame_id = _frame_id;
+    _gray_src = _src.pdata;
+    _gray_width = _src.width;
+    _gray_height = _src.height;
+}
+
 long ImageSearchAlgorithms::FindPic(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, long &x, long &y) {
     std::vector<PicMatchTemplate> prepared;
     std::vector<PicMatchTemplate *> views;
@@ -712,8 +748,7 @@ long ImageSearchAlgorithms::FindPic(std::vector<Image *> &pics, color_t dfcolor,
 long ImageSearchAlgorithms::FindPic(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir, long &x,
                                     long &y) {
     x = y = -1;
-    _gray.fromImage4(_src);
-    record_sum(_gray);
+    prepare_gray_cache();
     // 模板预处理由缓存层完成，这里只做扫描和匹配。
     for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
         auto match = pics[pic_id];
@@ -753,8 +788,7 @@ long ImageSearchAlgorithms::FindPicTh(std::vector<Image *> &pics, color_t dfcolo
 long ImageSearchAlgorithms::FindPicTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir,
                                       long &x, long &y) {
     x = y = -1;
-    _gray.fromImage4(_src);
-    record_sum(_gray);
+    prepare_gray_cache();
     std::vector<rect_t> blocks;
     // 将小循环放在最外面，提高处理速度
     for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
@@ -826,8 +860,7 @@ long ImageSearchAlgorithms::FindPicEx(std::vector<PicMatchTemplate *> &pics, col
                                       vpoint_desc_t &vpd) {
     vpd.clear();
     int match_ret = 0;
-    _gray.fromImage4(_src);
-    record_sum(_gray);
+    prepare_gray_cache();
     for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
         auto match = pics[pic_id];
         if (!match || !match->image)
@@ -868,8 +901,7 @@ long ImageSearchAlgorithms::FindPicExTh(std::vector<Image *> &pics, color_t dfco
 long ImageSearchAlgorithms::FindPicExTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir,
                                         vpoint_desc_t &vpd) {
     vpd.clear();
-    _gray.fromImage4(_src);
-    record_sum(_gray);
+    prepare_gray_cache();
     std::vector<rect_t> blocks;
     // 将小循环放在最外面，提高处理速度
     for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
@@ -1056,6 +1088,7 @@ long long ImageSearchAlgorithms::FindLine(std::wstring &outStr) {
         return 0; // 无二值图 = 无直线；不要输出伪造的 "0,0"
     int h = static_cast<int>(sqrt(_binary.width * _binary.width + _binary.height * _binary.height)) + 2;
     _sum.create(360, h);
+    _sum_is_gray = false;
     // 行：距离，列：角度
     _sum.fill(0);
     std::array<double, 360> cos_table;
@@ -1151,7 +1184,8 @@ long ImageSearchAlgorithms::real_match(long x, long y, ImageBin *timg, long long
     return 1;
 }
 
-void ImageSearchAlgorithms::record_sum(const ImageBin &gray) {
+void ImageSearchAlgorithms::record_sum(const ImageBin &gray, bool gray_source) {
+    _sum_is_gray = gray_source;
     // 为了减少边界判断，这里多多加一行一列
     _sum.create(gray.width + 1, gray.height + 1);
     _sum.fill(0);

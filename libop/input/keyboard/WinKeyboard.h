@@ -29,6 +29,8 @@ class WinKeyboard : public KeyboardBackend {
 
     virtual long InputChar(wchar_t ch);
 
+    long InputString(const wchar_t *text, long delay_ms) override;
+
   private:
     bool _shift_down = false;
     bool _ctrl_down = false;

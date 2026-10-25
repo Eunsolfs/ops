@@ -30,6 +30,21 @@ extern "C" {
 typedef struct op_c_context op_c_context;
 typedef op_c_context *op_handle;
 
+/*
+ * Thread safety / lifetime contract:
+ * - An op_handle is NOT thread-safe. Serialize calls on the same handle
+ *   (e.g. one Op per worker thread); different handles may run concurrently.
+ * - Process-wide resources still apply: DPI awareness is one-shot, OCR has a
+ *   bounded global concurrency limit, and the image/template cache has its own
+ *   internal lock.
+ * - Functions returning `const wchar_t *` return a handle-owned buffer. It is
+ *   valid only until the next string-returning call on the same handle, or
+ *   OpDestroy. Copy it immediately; do not free it.
+ * - Do not call OpDestroy while another thread is inside a call on that handle.
+ * - Output pointers may be NULL when the function documents them as optional;
+ *   otherwise pass valid pointers.
+ */
+
 // Lifecycle
 OP_C_API op_handle OP_CALL OpCreate(void);
 OP_C_API void OP_CALL OpDestroy(op_handle handle);
@@ -39,7 +54,8 @@ OP_C_API void OP_CALL OpDestroy(op_handle handle);
 // enable=1: call SetProcessDPIAware() when the first Op is created (physical pixels).
 // enable=0 (default): leave the host process DPI awareness untouched.
 // Returns 1 if accepted, 0 if an Op already exists.
-// OpGetProcessDpiAware returns this configured setting (0/1), not an OS query.
+// OpGetProcessDpiAware queries the ACTUAL OS awareness (0=unaware, 1=aware),
+// not merely the configured value.
 OP_C_API int OP_CALL OpSetProcessDpiAware(int enable);
 OP_C_API int OP_CALL OpGetProcessDpiAware(void);
 

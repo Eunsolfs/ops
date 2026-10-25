@@ -361,12 +361,7 @@ void op::Op::KeyPressStr(const wchar_t *key_str, long delay, long *ret) {
     internal::set_result(ret, 0L);
     if (!key_str)
         return;
-    auto nlen = wcslen(key_str);
-    for (size_t i = 0; i < nlen; ++i) {
-        const long key_ret = m_context->bkproc._keyboard->InputChar(key_str[i]);
-        internal::set_result(ret, key_ret);
-        if (key_ret == 0)
-            return;
-        ::Delay(delay > 0 ? delay : 1);
-    }
+    // NORMAL/NORMAL2 且无字符间延迟时由 WinKeyboard 合并成一次 SendInput；
+    // windows/dx 后端仍走逐字符路径。
+    internal::set_result(ret, m_context->bkproc._keyboard->InputString(key_str, delay));
 }
