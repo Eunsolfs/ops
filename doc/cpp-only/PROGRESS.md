@@ -339,6 +339,14 @@ OpenCV   = 5.0.0
 - 提交：`ea7d350 refactor(com): 删除旧 IOpAutomation，改用 IOpAutomation2`。
 - late-binding 兼容：`e545bc5 fix(com): 保证 late-binding 名字/dispid 兼容并补测试`。
 
+### 09:50 GitHub 推送与远端分支清理
+
+- 推送 `slim/cpp-only-vs` 到 `origin`（`https://github.com/Eunsolfs/ops`），包含全部审计、修复、
+  优化、测试与 PROGRESS 记录。
+- 远端仅保留 `master`（`d00f837`）与 `slim/cpp-only-vs`；已删除
+  `codex/*` 6 个分支与 `refactor/modularize`。
+- 本地 `master` 未改动，仍指向 `d00f837`。
+
 ### 待办清单
 
 - [x] 清理临时文件与构建日志
