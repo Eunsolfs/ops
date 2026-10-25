@@ -18,7 +18,7 @@
 
 - Release / Debug × x64 / Win32 **四个配置均 0 警告 / 0 错误**。
 - `op_test` 共 139 x64 用例 / 138 x86 用例；x64 核心集 14/14 PASS，x86 核心集 11/11 PASS（含大图积分图、DPI、
-  x86 C API 别名、COM IID/注册入口测试）。
+  x86 C API 别名、COM IID/注册入口/late-binding 测试）。
 - `cpp_call.exe`：`Ver = 0.4.8.3`、`OpenCV = 5.0.0`。
 - 已修复 2 个 P0、4 个 P1、5 个 P2；剩余项主要是兼容性决策、性能/测试缺口和跨仓库集成。
 
