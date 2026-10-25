@@ -60,7 +60,7 @@ The pure C++ smoke test is `examples/cpp_call`:
 ```
 include/libop.h          — Public API declaration (class op::Op, exported via OP_API)
 libop/libop.cpp          — Main implementation: coordinates WindowService, BindingSession, capture/input backends, and ImageSearchService
-libop/com/op.idl         — MIDL COM interface definition (IOpAutomation, ~300 dispids)
+libop/com/op.idl         — MIDL COM interface definition (IOpAutomation2, ~300 dispids)
 libop/com/OpAutomation.*  — COM IDispatch implementation, calls through to libop
 libop/base/Types.h       — Core types: point_t, rect_t, ocr_rec_t, bytearray aliases
 libop/base/AutomationModes.h   — Render type enums, input types, shared constants, version string
@@ -86,7 +86,7 @@ doc/cpp-only/            — Refactor notes, API changes, progress, native VS bu
 
 ### Key architectural patterns
 
-- **Pimpl + COM**: `class op::Op` (in `include/libop.h`) is the public DLL-exported facade. It holds a `unique_ptr<op_context>` which bundles Windows API helpers, window binding/capture state, and `ImageSearchService`. The COM layer (`IOpAutomation` / `OpAutomation`) converts `BSTR`/`VARIANT` arguments and delegates to `libop`.
+- **Pimpl + COM**: `class op::Op` (in `include/libop.h`) is the public DLL-exported facade. It holds a `unique_ptr<op_context>` which bundles Windows API helpers, window binding/capture state, and `ImageSearchService`. The COM layer (`IOpAutomation2` / `OpAutomation`) converts `BSTR`/`VARIANT` arguments and delegates to `libop`.
 - **COINIT_APARTMENTTHREADED**: The COM object uses apartment threading. All calls from a single thread share the same `op_context`.
 - **Screen capture modes**: Controlled by `SetDisplayInput()` — supports GDI (`normal`), DXGI, WGC, and `mem:<ptr>` for external pixel buffers.
 - **OCR is HTTP service-backed**: `Ocr`/`OcrEx`/`OcrAuto`/`OcrFromFile`/`OcrAutoFromFile` all go through `HttpOcrService` (singleton with mutex) to an external service (`ocr_server.exe` or PaddleOCR); `FindStr`/`FindStrEx` post-process the returned `ocr_rec_t` list, and `FindLine` is a standalone binarized-image line detector that needs no OCR service.

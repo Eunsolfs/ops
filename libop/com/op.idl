@@ -30,7 +30,7 @@ import "ocidl.idl";
 	nonextensible,
 	pointer_default(unique)
 ]
-interface IOpAutomation : IDispatch
+interface IOpAutomation2 : IDispatch
 {
 	//base config 1-19
 	[id(1)] HRESULT Ver([out, retval] BSTR* ret);
@@ -259,7 +259,7 @@ library opLib
 	]
 	coclass OpAutomation
 	{
-		[default] interface IOpAutomation;
+		[default] interface IOpAutomation2;
 	};
 };
 

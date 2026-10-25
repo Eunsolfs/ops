@@ -28,14 +28,14 @@ using namespace ATL;
 class ATL_NO_VTABLE OpAutomation
     : public CComObjectRootEx<CComSingleThreadModel>,
       public CComCoClass<OpAutomation, &CLSID_OpAutomation>,
-      public IDispatchImpl<IOpAutomation, &IID_IOpAutomation, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1> {
+      public IDispatchImpl<IOpAutomation2, &IID_IOpAutomation2, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1> {
   public:
     OpAutomation();
 
     DECLARE_REGISTRY_RESOURCEID(IDR_OPAUTOMATION)
 
     BEGIN_COM_MAP(OpAutomation)
-    COM_INTERFACE_ENTRY(IOpAutomation)
+    COM_INTERFACE_ENTRY(IOpAutomation2)
     COM_INTERFACE_ENTRY(IDispatch)
     END_COM_MAP()
 

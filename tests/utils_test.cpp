@@ -74,9 +74,9 @@ TEST(UtilsTest, X86CapiUndecoratedAliases) {
     ::FreeLibrary(module);
 }
 #else
-TEST(UtilsTest, ComIidBumpedForEarlyBinding) {
-    // 早期绑定客户端必须因旧 IID 得到 E_NOINTERFACE，而不是静默跳错 vtable。
-    const GUID old_iid = {0x85f31925, 0xb7ce, 0x4e26, {0x91, 0x8e, 0x08, 0x28, 0x93, 0xbd, 0xe6, 0xff}};
+TEST(UtilsTest, ComIidIsCurrentAndUnknownIidRejected) {
+    // 旧接口已删除；这里验证当前 IID 可创建，任意未知 IID 干净失败。
+    const GUID unknown_iid = {0xdeadbeef, 0x1234, 0x5678, {0x90, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67}};
     HMODULE module = ::LoadLibraryW(L"op_x64.dll");
     ASSERT_NE(module, nullptr);
     using GetClassObjectFn = HRESULT(STDAPICALLTYPE *)(REFCLSID, REFIID, LPVOID *);
@@ -89,11 +89,11 @@ TEST(UtilsTest, ComIidBumpedForEarlyBinding) {
     ASSERT_NE(factory, nullptr);
 
     IUnknown *current = nullptr;
-    EXPECT_TRUE(SUCCEEDED(factory->CreateInstance(nullptr, IID_IOpAutomation,
+    EXPECT_TRUE(SUCCEEDED(factory->CreateInstance(nullptr, IID_IOpAutomation2,
                                                   reinterpret_cast<LPVOID *>(&current))));
-    IUnknown *legacy = nullptr;
-    EXPECT_EQ(factory->CreateInstance(nullptr, old_iid, reinterpret_cast<LPVOID *>(&legacy)), E_NOINTERFACE);
-    EXPECT_EQ(legacy, nullptr);
+    IUnknown *unknown = nullptr;
+    EXPECT_EQ(factory->CreateInstance(nullptr, unknown_iid, reinterpret_cast<LPVOID *>(&unknown)), E_NOINTERFACE);
+    EXPECT_EQ(unknown, nullptr);
     if (current)
         current->Release();
     factory->Release();

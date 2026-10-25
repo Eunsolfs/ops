@@ -50,7 +50,7 @@
 - `include/libop.h`：对外 C++ 门面 `op::Op`（Pimpl，DLL 导出）。
 - `libop/op/`：`op::Op` 分文件实现（Runtime/Window/Input/Image/OpenCv/Ocr/Yolo/Memory）。
 - `libop/c_api/op_c_api.cpp`：C API，**直接持有 `op::Op`**，不经过 COM。
-- `libop/com/`：COM `IOpAutomation`（IDL 约 294 行、~300 dispid），ATL 实现。
+- `libop/com/`：COM `IOpAutomation2`（IDL 约 294 行、~300 dispid），ATL 实现。
 - `libop/capture/`、`binding/`、`input/`、`hook/`、`window/`、`memory/`、`image/`、`ocr/`、`yolo/`：功能模块。
 - 历史构建：`build.py` → vcpkg（minhook/directx-headers/gtest）+ BlackBone + OpenCV 5.0.0 静态库 → CMake VS 工程。
 

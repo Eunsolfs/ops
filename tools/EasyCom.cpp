@@ -51,7 +51,7 @@ HRESULT __stdcall myCoCreateInstance(_In_ REFCLSID rclsid, _In_opt_ LPUNKNOWN pU
     */
     // return oCoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
     if (memcmp(&rclsid, &CLSID_OpAutomation, sizeof(CLSID_OpAutomation)) != 0
-        /*|| memcmp(riid, &IID_IOpAutomation, sizeof(IID_IOpAutomation)) != 0*/) {
+        /*|| memcmp(riid, &IID_IOpAutomation2, sizeof(IID_IOpAutomation2)) != 0*/) {
 
         // MessageBoxA(NULL, "oCoCreateInstance", "", 0);
         return oCoCreateInstance(rclsid, pUnkOuter, dwClsContext, riid, ppv);
@@ -86,8 +86,8 @@ HRESULT __stdcall myCoCreateInstance(_In_ REFCLSID rclsid, _In_opt_ LPUNKNOWN pU
         return -3;
     }
     // printf("DllGetClassObject !\n");
-    IOpAutomation *op;
-    // fac->lpVtbl->CreateInstance(fac, NULL, &IID_IOpAutomation, (void**)&op);
+    IOpAutomation2 *op;
+    // fac->lpVtbl->CreateInstance(fac, NULL, &IID_IOpAutomation2, (void**)&op);
     fac->CreateInstance(NULL, riid, (void **)&op);
     // fac->lpVtbl->QueryInterface()
     if (!op) {

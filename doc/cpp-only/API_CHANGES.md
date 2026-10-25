@@ -204,10 +204,10 @@
 - 删除的 COM dispid 保留空洞（200/201、220-244），其余 id 不重排；**late binding** 客户端调用这些
   dispid 会得到 `DISP_E_MEMBERNOTFOUND`。
 - **早期绑定兼容性（已处理）**：`op.idl` 是 `dual` 接口，删除接口中段的方法会让后续方法的 vtable
-  槽位整体前移。已把 `IOpAutomation` 的 IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`、
-  typelib 版本升为 `1.1`，`OpAutomation` 的 `IDispatchImpl` 同步为 `1,1`。旧 early-binding 客户端
-  会在 `QueryInterface` 旧 IID 时明确失败，不再可能静默调用错误方法；**late binding** 仍按
-  CLSID + dispid 工作。使用旧 typelib 的客户端必须重新导入/重新编译。
+  槽位整体前移。旧 `IOpAutomation` 接口已删除，新接口 `IOpAutomation2` 的 IID 为
+  `59d588f8-b39e-4427-9826-c1fba566318d`、typelib 版本 `1.1`，`OpAutomation` 的 `IDispatchImpl`
+  同步为 `1,1`。旧 early-binding 客户端会在 `QueryInterface` 旧 IID 时明确失败，不再可能静默调用
+  错误方法；**late binding** 仍按 CLSID + dispid 工作。使用旧 typelib 的客户端必须重新导入/重新编译。
 - `libop/ocr/OcrService.*`（HTTP 客户端）保留；`TesseractOcr.*`（本地模型）删除。
   OCR 现在只锁配置快照，HTTP 在锁外执行，并限制最多 4 个在途请求；不再因单次后端卡死阻塞
   `SetOcrEngine` 或全进程所有 OCR。

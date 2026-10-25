@@ -286,7 +286,8 @@ OpenCV   = 5.0.0
 
 ### 07:00 COM/OCR/积分图/异常边界优化
 
-- COM 兼容：`IOpAutomation` IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`，typelib 升到 `1.1`，
+- COM 兼容：旧 `IOpAutomation` 接口删除；新接口 `IOpAutomation2`，IID 升为
+  `59d588f8-b39e-4427-9826-c1fba566318d`，typelib 升到 `1.1`，
   `IDispatchImpl` 同步 1,1。旧 early-binding 客户端 QI 旧 IID 会干净失败；late binding 按
   CLSID+dispid 仍可用。
 - x86 C API：新增 `libop/c_api/op_c_api_x86.def`，保留 `_OpXxx@N` 并加 `OpXxx` 别名；
@@ -324,6 +325,14 @@ OpenCV   = 5.0.0
   `DllRegisterServer/DllUnregisterServer` 入口、类工厂与 IID 兼容。
 - 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10；FindPic 3 项 + KeyPressStr 1 项 PASS。
 - 提交：`3de65a8 feat(perf): FindPic/GDI 缓存、DPI 实际状态、输入等待与测试完善`。
+
+### 09:00 删除旧 COM 接口名
+
+- `IOpAutomation` 重命名为 `IOpAutomation2`；旧接口名/IID 不再出现在代码中。
+- 类工厂、COM map、`IDispatchImpl`、`op.idl` coclass、`tools/EasyCom` 同步。
+- 测试改为验证当前 IID 可创建、任意未知 IID 返回 `E_NOINTERFACE`，不再保留旧 IID 字面量。
+- 文档（API_CHANGES/README/CLAUDE/AUDIT_SUMMARY）同步为 `IOpAutomation2`。
+- 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10。
 
 ### 待办清单
 

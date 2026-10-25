@@ -41,8 +41,9 @@
 
 ## 2.1 本轮追加优化（2026-10-25 07:00）
 
-- **COM 早期绑定**：`IOpAutomation` IID 升为 `59d588f8-b39e-4427-9826-c1fba566318d`，typelib `1.1`，
-  `IDispatchImpl` 1,1；旧 early-binding 客户端 QI 旧 IID 时干净失败，late binding 不受影响。
+- **COM 早期绑定**：旧 `IOpAutomation` 接口已删除；新接口 `IOpAutomation2`，IID
+  `59d588f8-b39e-4427-9826-c1fba566318d`，typelib `1.1`，`IDispatchImpl` 1,1；旧 early-binding
+  客户端 QI 旧 IID 时干净失败，late binding 不受影响。
 - **x86 GetProcAddress**：新增 [op_c_api_x86.def](../libop/c_api/op_c_api_x86.def)，同时导出
   `_OpXxx@N` 与 `OpXxx` 别名；x86 共 400 个导出。`UtilsTest.X86CapiUndecoratedAliases` 已验证。
 - **OCR 并发**：配置锁只保护 endpoint/timeout 快照，HTTP 放锁外；最多 4 个在途请求，

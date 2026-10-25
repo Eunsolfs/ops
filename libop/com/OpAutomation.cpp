@@ -47,7 +47,7 @@ OpAutomation::OpAutomation() {
 STDMETHODIMP OpAutomation::Invoke(DISPID dispIdMember, REFIID riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams,
                                  VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr) {
     try {
-        return IDispatchImpl<IOpAutomation, &IID_IOpAutomation, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1>::Invoke(
+        return IDispatchImpl<IOpAutomation2, &IID_IOpAutomation2, &LIBID_opLib, /*wMajor =*/1, /*wMinor =*/1>::Invoke(
             dispIdMember, riid, lcid, wFlags, pDispParams, pVarResult, pExcepInfo, puArgErr);
     } catch (...) {
         // 不让 C++ 异常跨 IDispatch/静态 CRT 边界。
