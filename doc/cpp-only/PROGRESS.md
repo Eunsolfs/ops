@@ -337,6 +337,7 @@ OpenCV   = 5.0.0
 - 文档（API_CHANGES/README/CLAUDE/AUDIT_SUMMARY）同步为 `IOpAutomation2`。
 - 验证：四配置 0 警告/0 错误；x64 核心 14/14、x86 核心 11/11。
 - 提交：`ea7d350 refactor(com): 删除旧 IOpAutomation，改用 IOpAutomation2`。
+- late-binding 兼容：`e545bc5 fix(com): 保证 late-binding 名字/dispid 兼容并补测试`。
 
 ### 待办清单
 

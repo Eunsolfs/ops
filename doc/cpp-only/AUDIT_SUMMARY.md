@@ -6,6 +6,7 @@
 - 后续最优优化提交：`1ccc557`（COM IID 1.1、x86 C API 别名、OCR 并发、int64 积分图、Debug 输出隔离）
 - 本轮选择优化提交：`3de65a8`（FindPic/GDI 缓存、DPI 实际状态、Delay/KeyPressStr、C API 契约、测试完善）
 - COM 接口清理提交：`ea7d350`（删除旧 `IOpAutomation`，改用 `IOpAutomation2`）
+- late-binding 兼容提交：`e545bc5`（名字表、旧 dispid `MEMBERNOTFOUND`、typelib 注册测试）
 - 当前状态：工作区已提交；本文件与三份详细报告同批入库，后续文档更新见 `git log`。
 - 详细报告：
   - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能，16 条
