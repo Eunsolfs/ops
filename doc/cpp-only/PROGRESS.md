@@ -323,7 +323,7 @@ OpenCV   = 5.0.0
 - 真正的 regsvr32 注册往返因写 HKCR/HKLM 的环境依赖未纳入自动化；测试覆盖
   `DllRegisterServer/DllUnregisterServer` 入口、类工厂与 IID 兼容。
 - 验证：四配置 0 警告/0 错误；x64 核心 13/13、x86 核心 10/10；FindPic 3 项 + KeyPressStr 1 项 PASS。
-- 提交：见下一次 git log。
+- 提交：`3de65a8 feat(perf): FindPic/GDI 缓存、DPI 实际状态、输入等待与测试完善`。
 
 ### 待办清单
 

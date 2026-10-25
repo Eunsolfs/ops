@@ -4,6 +4,7 @@
 - 审计日期：2026-10-25
 - 代码修复提交：`188cfae`（`fix(audit): 修复削减分支的 P0/P1 隐藏问题并补充审计`）
 - 后续最优优化提交：`1ccc557`（COM IID 1.1、x86 C API 别名、OCR 并发、int64 积分图、Debug 输出隔离）
+- 本轮选择优化提交：`3de65a8`（FindPic/GDI 缓存、DPI 实际状态、Delay/KeyPressStr、C API 契约、测试完善）
 - 当前状态：工作区已提交；本文件与三份详细报告同批入库，后续文档更新见 `git log`。
 - 详细报告：
   - [AUDIT_RUNTIME.md](AUDIT_RUNTIME.md)：运行时/线程/资源/性能，16 条
