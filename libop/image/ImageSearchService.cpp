@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <shared_mutex>
@@ -194,7 +195,9 @@ long ImageSearchService::FindPic(const std::wstring &files, const wstring &delta
     files2mats(files, vmatches, vpic_name, holders, match_holders);
     dfcolor.str2color(delta_colors);
     sim = 0.5 + sim / 2;
-    long ret = ImageSearchAlgorithms::FindPicTh(vmatches, dfcolor, sim, dir, x, y);
+    // 不用 FindPicTh：该构建下线程池路径在 MuMu 子窗口/服务进程里恒返回 -1，
+    // 非线程版 FindPic 同参数可命中（OP 官方测试工具也是这样）。
+    long ret = ImageSearchAlgorithms::FindPic(vmatches, dfcolor, sim, dir, x, y);
     return ret;
 }
 //
@@ -210,7 +213,7 @@ long ImageSearchService::FindPicEx(const std::wstring &files, const wstring &del
     files2mats(files, vmatches, vpic_name, holders, match_holders);
     dfcolor.str2color(delta_colors);
     sim = 0.5 + sim / 2;
-    long ret = ImageSearchAlgorithms::FindPicExTh(vmatches, dfcolor, sim, dir, vpd);
+    long ret = ImageSearchAlgorithms::FindPicEx(vmatches, dfcolor, sim, dir, vpd);
     std::wstringstream ss(std::wstringstream::in | std::wstringstream::out);
     if (returnID) {
         for (auto &it : vpd) {
