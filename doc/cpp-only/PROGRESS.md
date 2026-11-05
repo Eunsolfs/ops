@@ -377,3 +377,19 @@ OpenCV   = 5.0.0
 - [ ] `check_bind` 隐式桌面绑定（用户确认不做）
 - [ ] HTTP OCR JSON parser/响应上限（用户确认暂不做）
 - [ ] 真正的 regsvr32 注册往返（环境相关，未自动化）
+
+### 16:50 优化与拓展审查
+
+- 背景：削减分支已完成“是否坏”的缺陷审计；本次按“还能更好/更全”做一轮只读审查，
+  覆盖 C API/COM、找图/OCR、采集/Hook/输入、测试/构建/发布，产出 `REVIEW_OPTIMIZATION.md`。
+- 结论要点（按优先级）：
+  1. `OpGetScreenData` 裸指针无寿命契约，Twinkle 每次截图被迫“落盘 BMP→读回→删文件”，
+     建议新增 `OpCopyScreenData` 拷贝式 API。
+  2. `setlog` 默认 `MessageBoxA` 且开关是进程级静态变量；Twinkle 未关闭，内部错误可能卡死宿主。
+  3. 模板缓存不比对文件 mtime、`EnablePicCache(0)` 只关写不关读 → 覆盖同名模板后仍匹配旧图（正确性）。
+  4. `delta_color` 对非透明模板静默失效；返回值域不一致（FindPic -1 / FindColor 0）。
+  5. 每个 `Op` 句柄预建 `hardware_concurrency()` 线程池，而线程版找图路径已废弃（全仓无调用）。
+  6. DXGI 每帧新建 staging + 整屏拷贝；Hook 每帧重开共享映射；输入消息 `SMTO_BLOCK 2000ms`。
+  7. 工程化缺口：无 CI（workflows 为空目录）、无一键构建脚本、无 PDB/打包、测试资产不入库、
+     “0 警告”无机制保证。
+- 未改动任何源码；各项的落地顺序与验证方式见 `REVIEW_OPTIMIZATION.md` §4/§5。
