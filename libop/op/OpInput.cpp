@@ -106,8 +106,8 @@ void op::Op::BindWindow(LONG_PTR hwnd, const wchar_t *display, const wchar_t *mo
 
 void op::Op::BindWindowEx(LONG_PTR display_hwnd, LONG_PTR input_hwnd, const wchar_t *display,
                               const wchar_t *mouse, const wchar_t *keypad, long mode, long *ret) {
-    if (m_context->bkproc.IsBind())
-        m_context->bkproc.UnBindWindow();
+    // 不在这里提前 UnBind：BindingSession 会在参数/OS 校验全部通过后才释放旧绑定，
+    // 失败时保留当前绑定（见 REVIEW_OPTIMIZATION.md O27）。
     internal::set_result(ret, m_context->bkproc.BindWindowEx(display_hwnd, input_hwnd, display, mouse, keypad, mode));
 }
 

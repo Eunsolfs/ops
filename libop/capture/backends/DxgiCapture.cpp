@@ -87,6 +87,8 @@ long DxgiCapture::BindEx(HWND hwnd, long render_type) {
 long DxgiCapture::UnBindEx() {
     duplication_.Release();
     lastTexture_.Release();
+    stagingTexture_.Release();
+    stagingDesc_ = {};
     device_.Release();
     deviceContext_.Release();
     target_monitor_ = nullptr;
@@ -259,6 +261,9 @@ bool DxgiCapture::InitD3D11Device(IDXGIAdapter *adapter) {
 
     device_.Release();
     deviceContext_.Release();
+    // 设备重建后 staging 纹理不能跨设备复用。
+    stagingTexture_.Release();
+    stagingDesc_ = {};
 
     D3D_FEATURE_LEVEL FeatureLevels[] = {D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0,
                                          D3D_FEATURE_LEVEL_9_1};
@@ -360,6 +365,11 @@ bool DxgiCapture::GetDesktopFrame(ID3D11Texture2D **texture, DWORD timeout_ms, b
     CComPtr<ID3D11Texture2D> acquireFrame;
     DxgiFrameLease frameLease(duplication_);
     hr = frameLease.acquire(timeout_ms, &frameInfo, &resource);
+    if (FAILED(hr) && hr == DXGI_ERROR_WAIT_TIMEOUT && !lastTexture_) {
+        // 刚重建 duplication（切屏/ACCESS_LOST）或静态桌面：没有上一帧可复用，
+        // 再多等一会儿，避免“重建后持续失败直到画面变化”。
+        hr = frameLease.acquire(100, &frameInfo, &resource);
+    }
     if (FAILED(hr)) {
         if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
             // 没有新桌面帧时复用上一帧，避免静态画面被当作捕获失败。
@@ -388,12 +398,20 @@ bool DxgiCapture::GetDesktopFrame(ID3D11Texture2D **texture, DWORD timeout_ms, b
     desc.MipLevels = 1;
     desc.ArraySize = 1;
     desc.SampleDesc.Count = 1;
-    CComPtr<ID3D11Texture2D> copyTexture;
-    hr = device_->CreateTexture2D(&desc, NULL, &copyTexture);
-    if (FAILED(hr) || !copyTexture) {
-        return false;
+
+    // staging 纹理按 (尺寸, 格式) 复用：4K 下每帧 CreateTexture2D + 33MB GPU 拷贝
+    // 是主要开销之一，复用可省掉一次驱动分配。
+    const bool need_staging = !stagingTexture_ || stagingDesc_.Width != desc.Width ||
+                              stagingDesc_.Height != desc.Height || stagingDesc_.Format != desc.Format;
+    if (need_staging) {
+        stagingTexture_.Release();
+        hr = device_->CreateTexture2D(&desc, NULL, &stagingTexture_);
+        if (FAILED(hr) || !stagingTexture_) {
+            return false;
+        }
+        stagingDesc_ = desc;
     }
-    deviceContext_->CopyResource(copyTexture, acquireFrame);
+    deviceContext_->CopyResource(stagingTexture_, acquireFrame);
 
     hr = frameLease.release();
     if (FAILED(hr)) {
@@ -401,7 +419,7 @@ bool DxgiCapture::GetDesktopFrame(ID3D11Texture2D **texture, DWORD timeout_ms, b
         return false;
     }
 
-    lastTexture_ = copyTexture;
+    lastTexture_ = stagingTexture_;
     if (fresh_frame) {
         *fresh_frame = true;
     }

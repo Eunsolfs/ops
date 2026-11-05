@@ -34,6 +34,9 @@ class DxgiCapture : public ICaptureBackend {
     ATL::CComPtr<ID3D11DeviceContext> deviceContext_;
     ATL::CComPtr<IDXGIOutputDuplication> duplication_;
     ATL::CComPtr<ID3D11Texture2D> lastTexture_;
+    // 复用的 staging 纹理：尺寸/格式不变时不再每帧 CreateTexture2D。
+    ATL::CComPtr<ID3D11Texture2D> stagingTexture_;
+    D3D11_TEXTURE2D_DESC stagingDesc_{};
     HMONITOR target_monitor_{nullptr};
     RECT output_rect_{};
     POINT client_screen_origin_{};

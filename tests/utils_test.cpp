@@ -5,6 +5,7 @@
 #include "../libop/image/Image.h"
 #include "../libop/image/ImageSearchAlgorithms.h"
 #include "../include/op_c_api.h"
+#include "../include/op_version.h"
 #include "op_i.h"
 
 #include <algorithm>
@@ -262,4 +263,11 @@ TEST(UtilsTest, PicCacheRefreshesAfterFileOverwrite) {
 
     ::DeleteFileW(file.c_str());
     ::RemoveDirectoryW(dir.c_str());
+}
+
+TEST(UtilsTest, VersionMatchesHeader) {
+    // OP_VERSION 字符串来自 vs/op.common.props，op_version.h 是版本唯一来源；
+    // 两者漂移时这条用例会失败。
+    op::Op op;
+    EXPECT_EQ(op.Ver(), std::wstring(OP_VERSION_STRING_W));
 }

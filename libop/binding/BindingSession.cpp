@@ -371,6 +371,13 @@ LONG_PTR BindingSession::GetBindWindow() {
 }
 
 long BindingSession::IsBind() {
+    if (!_is_bind)
+        return 0;
+    // 绑定窗口被销毁后不再报告“已绑定”，避免上层继续对死句柄做输入/采集。
+    if (_display_hwnd && !::IsWindow(_display_hwnd))
+        return 0;
+    if (_input_hwnd && !::IsWindow(_input_hwnd))
+        return 0;
     return _is_bind;
 }
 

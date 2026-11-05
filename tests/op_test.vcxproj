@@ -68,6 +68,7 @@
     <!-- 测试会链接 OpenCV/BlackBone/MinHook（重编的 libop 源 + 公共 props），因此开依赖检查 -->
     <OpCheckDependencies>true</OpCheckDependencies>
     <OpBuildsAndLinksOpenCv>true</OpBuildsAndLinksOpenCv>
+    <OpCheckGTest>true</OpCheckGTest>
     <OpLinkHeavyDeps>true</OpLinkHeavyDeps>
     <!-- op_i.c/op_i.h 由 op_x64 工程的 MIDL 步骤生成，本工程不跑 MIDL -->
     <OpGenerateComIdl>false</OpGenerateComIdl>

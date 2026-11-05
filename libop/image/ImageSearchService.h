@@ -1,6 +1,8 @@
 #pragma once
 #include "ImageSearchAlgorithms.h"
+#include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 
 namespace op::image {
@@ -82,6 +84,16 @@ class ImageSearchService : public ImageSearchAlgorithms {
     int _enable_cache;
 
   private:
+    // 颜色串解析结果缓存：轮询场景会反复解析同一个字符串。
+    struct ColorParseCache {
+        int kind = 0;
+        std::vector<color_df_t> colors;
+        std::vector<bool> explicit_dfs;
+    };
+    static constexpr size_t kColorCacheLimit = 64;
+    std::mutex _color_cache_mutex;
+    std::map<wstring, ColorParseCache> _color_cache;
+
     // RETURN TYPE 0:word colors info; 1:bk color info
     int str2colordfs(const wstring &color_str, std::vector<color_df_t> &colors);
     int str2colordfs(const wstring &color_str, std::vector<color_df_t> &colors, std::vector<bool> *explicit_dfs);

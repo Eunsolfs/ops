@@ -2,6 +2,7 @@
 #ifndef OP_BASE_AUTOMATION_MODES_H_
 #define OP_BASE_AUTOMATION_MODES_H_
 #include "Types.h"
+#include "op_version.h"
 #include <cstdint>
 #define SAFE_CLOSE(h)                                                                                                  \
     if (h)                                                                                                             \
@@ -101,8 +102,10 @@ extern long MOUSE_DX_DELAY;
 
 #define MAKE_OP_VERSION(a, b, c, d) _TOSTRING(a##.##b##.##c##.##d)
 
+// 版本唯一来源见 include/op_version.h；工程属性仍会定义 OP_VERSION 字符串
+// （vs/op.common.props），两者由 op_test 的 VersionMatchesHeader 用例校验一致。
 #ifndef OP_VERSION
-#define OP_VERSION MAKE_OP_VERSION(0, 4, 8, 3)
+#define OP_VERSION OP_VERSION_STRING
 #endif // OP_VERSION
 // 模块句柄
 // extern HINSTANCE gInstance;

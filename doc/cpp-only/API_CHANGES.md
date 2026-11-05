@@ -277,3 +277,20 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
   该参数被忽略。已在 `include/libop.h` 注明（O19）。
 - `OpGetLastError` 返回 `::GetLastError()` 的值，不是库内分类错误码；失败时可能是 0 或残留值。
   已在 `include/op_c_api.h` 注明（O4）。
+
+## 8. 2026-11-05 第 2 批（内部优化与语义收紧）
+
+- **版本单一来源**：新增 `include/op_version.h`（`OP_VERSION_MAJOR/MINOR/PATCH/BUILD`、
+  `OP_VERSION_STRING`）。`libop/com/op.rc`、`libop/c_api/op_c_api.rc`、
+  `libop/base/AutomationModes.h` 改为引用它；`vs/op.common.props` 仍定义字符串 `OP_VERSION`，
+  `op_test` 的 `UtilsTest.VersionMatchesHeader` 保证两者不漂移。
+  注意该头文件保持 ASCII：RC 预处理器按 ANSI 代码页处理，UTF-8 注释会导致宏不展开。
+- **绑定语义收紧**：`OpBindWindow/OpBindWindowEx` 不再在入口无条件 `UnBindWindow`；
+  参数/OS 校验失败时保留当前绑定（与 `BindingSession` 的既有行为一致）。
+  `OpIsBind` 现在会检查绑定窗口是否仍存在，窗口销毁后返回 0。
+- **DXGI 采集**：staging 纹理按 `(尺寸,格式)` 复用（不再每帧 `CreateTexture2D`）；
+  `AcquireNextFrame` 超时且没有上一帧时额外等待 100ms，避免切屏/重建后持续失败。
+- **颜色串解析缓存**：`FindColor/FindMultiColor/GetColorNum/FindColorBlock/DrawLine` 等
+  共用同一份“字符串 → color_df 列表”缓存（每 handle 最多 64 条），高频轮询不再重复 split/解析。
+- **构建依赖预检**：`OpCheckDependencies` 增加 gtest.lib / minhook.h / directx/d3d12.h 检查，
+  `tests/op_test.vcxproj` 设置 `OpCheckGTest=true`；缺依赖时在编译前给出可读报错。

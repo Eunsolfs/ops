@@ -19,8 +19,13 @@
 | O19 | ✅ 已文档化 | 行为保持不变，`delta_color` 仅透明模板生效写入头文件与代码注释 |
 | G1 | ✅ 已处理 | 新增 `scripts/build.ps1`、`test.ps1`、`verify.ps1`（vswhere 定位 MSBuild） |
 | G2 | ✅ 已处理 | 新增 `OpWarningsAsErrors` 开关（默认 false，CI/verify 可打开） |
+| O8 | ✅ 已处理 | 颜色串解析结果按字符串缓存（上限 64 条） |
+| O9 | ✅ 已处理 | 新增 `include/op_version.h` 作为唯一来源；`op.rc`/`op_c_api.rc`/`AutomationModes.h` 引用，测试校验一致性 |
+| O24 | ◐ 部分处理 | DXGI staging 纹理复用 + 重建后 100ms 重试；GPU 子区域拷贝留待后续 |
+| O27 | ✅ 已处理 | 移除绑定前的无条件 UnBind（参数校验失败保留旧绑定）；`IsBind` 校验窗口是否仍存在 |
+| G4 | ✅ 已处理 | `OpCheckDependencies` 增加 gtest/minhook/directx-headers 检查；op_test 打开 `OpCheckGTest` |
 
-> 其余项（O4/O5/O6/O8/O9/O11/O12/O14–O16/O18/O20–O30、E1–E8、G3–G8）尚未处理，
+> 尚未处理：O4/O5/O6/O11/O12/O14–O16/O18/O20–O23/O25/O26/O28–O30、E1–E8、G3/G5–G8。
 > 正文保留原始分析，作为后续批次清单。
 
 

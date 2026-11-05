@@ -339,30 +339,55 @@ int ImageSearchService::str2colordfs(const wstring &color_str, std::vector<color
     return str2colordfs(color_str, colors, nullptr);
 }
 
-int ImageSearchService::str2colordfs(const wstring &color_str, std::vector<color_df_t> &colors, std::vector<bool> *explicit_dfs) {
-    std::vector<wstring> vstr, vstr2;
-    color_df_t cr;
+int ImageSearchService::str2colordfs(const wstring &color_str, std::vector<color_df_t> &colors,
+                                     std::vector<bool> *explicit_dfs) {
     colors.clear();
     if (explicit_dfs)
         explicit_dfs->clear();
-    int ret = 0;
     if (color_str.empty()) { // default
         return 1;
     }
-    if (color_str[0] == L'@') { // bk color info
-        ret = 1;
+
+    {
+        std::lock_guard<std::mutex> lock(_color_cache_mutex);
+        auto it = _color_cache.find(color_str);
+        if (it != _color_cache.end()) {
+            colors = it->second.colors;
+            if (explicit_dfs)
+                *explicit_dfs = it->second.explicit_dfs;
+            return it->second.kind;
+        }
     }
-    split(ret ? color_str.substr(1) : color_str, vstr, L"|");
+
+    ColorParseCache parsed;
+    if (color_str[0] == L'@') { // bk color info
+        parsed.kind = 1;
+    }
+
+    const wstring body = parsed.kind ? color_str.substr(1) : color_str;
+    std::vector<wstring> vstr, vstr2;
+    color_df_t cr;
+    split(body, vstr, L"|");
     for (auto &it : vstr) {
         split(it, vstr2, L"-");
         cr.color.str2color(vstr2[0]);
         const bool has_explicit_df = vstr2.size() == 2;
         cr.df.str2color(has_explicit_df ? vstr2[1] : L"000000");
-        colors.push_back(cr);
-        if (explicit_dfs)
-            explicit_dfs->push_back(has_explicit_df);
+        parsed.colors.push_back(cr);
+        parsed.explicit_dfs.push_back(has_explicit_df);
     }
-    return ret;
+
+    {
+        std::lock_guard<std::mutex> lock(_color_cache_mutex);
+        if (_color_cache.size() >= kColorCacheLimit)
+            _color_cache.clear(); // 颜色串通常远少于上限，整体清空即可。
+        _color_cache.emplace(color_str, parsed);
+    }
+
+    colors = parsed.colors;
+    if (explicit_dfs)
+        *explicit_dfs = parsed.explicit_dfs;
+    return parsed.kind;
 }
 
 void ImageSearchService::str2colors(const wstring &color, std::vector<color_t> &vcolor) {

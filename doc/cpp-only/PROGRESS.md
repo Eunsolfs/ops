@@ -427,3 +427,22 @@ OpenCV   = 5.0.0
 - 环境备注：本轮中途 `build/_deps` 被外部进程清空，已用
   `pwsh scripts/bootstrap-deps.ps1 -Arch both` 重建 BlackBone + OpenCV；本机 tlog 偶发被占用，
   构建时用 `-NoTrackFileAccess`（`verify.ps1` 默认带）。
+
+### 22:40 第 2 批优化（绑定语义 / DXGI staging / 颜色缓存 / 版本单源 / 依赖预检）
+
+- O27 绑定状态机：`OpBindWindow*` 不再在入口无条件 `UnBindWindow`（参数校验失败保留旧绑定）；
+  `IsBind` 增加 `IsWindow` 校验，窗口销毁后返回 0。
+- O24（部分）DXGI：staging 纹理按 `(尺寸,格式)` 复用，不再每帧 `CreateTexture2D`；
+  `AcquireNextFrame` 超时且无上一帧时多等 100ms，缓解切屏/重建后持续失败。
+- O8 颜色串解析缓存：`str2colordfs` 结果按字符串缓存（每 handle 上限 64 条），
+  FindColor/FindMultiColor/GetColorNum/FindColorBlock/FindLine 共用。
+- O9 版本单源：新增 `include/op_version.h`，`op.rc`/`op_c_api.rc`/`AutomationModes.h` 引用；
+  `UtilsTest.VersionMatchesHeader` 校验 `OpVer()` 与头文件一致。
+  坑：RC 预处理器按 ANSI 代码页处理，头文件含 UTF-8 注释会导致宏不展开（RC2104），已改 ASCII。
+- G4 依赖预检：`OpCheckDependencies` 增加 gtest/minhook/directx-headers；op_test 打开 `OpCheckGTest`。
+- 验证：`pwsh scripts/verify.ps1` 四配置 0 error（日志无 `warning C`）；
+  x64 core 68 ran / 63 passed / 5 skipped；Win32 core 67 ran / 61 passed / 6 skipped。
+  版本资源与 `OpVer()` 均为 0.4.8.3。
+- 已知环境问题（与本批改动无关，WGC 后端未改动）：`WgcTest.FirstFrameResizeAndCloseScenarios`
+  场景 #4 在本机稳定失败（窗口销毁后 WGC 仍能取到上一帧，日志中无 "capture item closed"），
+  待单独排查；core 集不包含该用例。

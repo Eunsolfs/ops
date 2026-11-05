@@ -1,13 +1,14 @@
 // Version resource for the C API DLL.
 //
 #include "winres.h"
+#include "op_version.h"
 #include "verrsrc.h"
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,4,8,3
- PRODUCTVERSION 0,4,8,3
+ FILEVERSION OP_VERSION_MAJOR,OP_VERSION_MINOR,OP_VERSION_PATCH,OP_VERSION_BUILD
+ PRODUCTVERSION OP_VERSION_MAJOR,OP_VERSION_MINOR,OP_VERSION_PATCH,OP_VERSION_BUILD
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -24,11 +25,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "op"
             VALUE "FileDescription", "op C API DLL"
-            VALUE "FileVersion", "0.4.8.3"
+            VALUE "FileVersion", OP_VERSION_STRING
             VALUE "InternalName", "op_c_api.dll"
             VALUE "OriginalFilename", "op_c_api.dll"
             VALUE "ProductName", "op"
-            VALUE "ProductVersion", "0.4.8.3"
+            VALUE "ProductVersion", OP_VERSION_STRING
         END
     END
     BLOCK "VarFileInfo"

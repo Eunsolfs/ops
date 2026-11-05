@@ -127,5 +127,13 @@
            Text="[OP] 找不到 MinHook 静态库：$(OpMinHookLib)。请安装 vcpkg x64-windows-static 的 minhook，或设置 VCPKG_ROOT。" />
     <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(OpOpenCvLibDir)\opencv_core$(OpOpenCvLibSuffix).lib')"
            Text="[OP] 找不到 OpenCV 静态库：$(OpOpenCvLibDir)\opencv_core$(OpOpenCvLibSuffix).lib。" />
+    <!-- 测试工程直接链接 gtest.lib；缺它时会在链接期才报 LNK1104，提前检查。 -->
+    <Error Condition="'$(OpCheckGTest)' == 'true' and !Exists('$(OpVcpkgStaticDir)\lib\gtest.lib')"
+           Text="[OP] 找不到 gtest.lib：$(OpVcpkgStaticDir)\lib\gtest.lib。请安装 vcpkg 的 gtest（scripts/bootstrap-deps.ps1 会处理），或设置 VCPKG_ROOT。" />
+    <!-- Hook/WGC 需要的 MinHook 与 DirectX-Headers 头文件。 -->
+    <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(OpVcpkgStaticDir)\include\minhook.h')"
+           Text="[OP] 找不到 minhook.h：$(OpVcpkgStaticDir)\include\minhook.h。请安装 vcpkg 的 minhook（静态 triplet）。" />
+    <Error Condition="'$(OpBuildsAndLinksOpenCv)' == 'true' and !Exists('$(OpVcpkgStaticDir)\include\directx\d3d12.h')"
+           Text="[OP] 找不到 DirectX-Headers：$(OpVcpkgStaticDir)\include\directx\d3d12.h。请安装 vcpkg 的 directx-headers（静态 triplet）。" />
   </Target>
 </Project>
