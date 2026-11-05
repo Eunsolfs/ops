@@ -314,3 +314,5 @@ wheelhouse*
 .venv*
 
 SKILL.md
+# Local package output (scripts/package.ps1)
+dist/

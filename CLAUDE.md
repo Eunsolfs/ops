@@ -59,7 +59,7 @@ The pure C++ smoke test is `examples/cpp_call`:
 
 ```
 include/libop.h          — Public API declaration (class op::Op, exported via OP_API)
-libop/libop.cpp          — Main implementation: coordinates WindowService, BindingSession, capture/input backends, and ImageSearchService
+libop/libop.cpp          — op::Op ctor/dtor (id allocation + OpContext); real implementation in libop/op/Op*.cpp
 libop/com/op.idl         — MIDL COM interface definition (IOpAutomation2, ~300 dispids)
 libop/com/OpAutomation.*  — COM IDispatch implementation, calls through to libop
 libop/base/Types.h       — Core types: point_t, rect_t, ocr_rec_t, bytearray aliases
@@ -70,17 +70,17 @@ libop/capture/           — Capture sources and GDI/DXGI/WGC/Hook backends
 libop/input/             — Mouse, keyboard, and DX input backends
 libop/hook/              — Display/input hooks, injection protocol, and hook exports
 libop/ipc/               — Shared memory and process mutex primitives
-libop/image/             — Image search (ImageSearchAlgorithms), image processing (ImageSearchService),
-                           OCR via HTTP service (HttpOcrService, singleton with mutex)
+libop/image/             — Image search (ImageSearchAlgorithms), image processing (ImageSearchService)
+libop/ocr/               — OCR via HTTP service (op::ocr::HttpOcrService in OcrService.*, singleton + mutex)
 libop/window/            — Window, process, clipboard, command, injection, and layout services
-libop/algorithm/         — A* pathfinding (AStar.hpp)
+libop/algorithm/         — A* pathfinding (AStar.h)
 tests/                   — GoogleTest suite (tests/op_test.vcxproj; x64 + Win32)
 tools/                   — EasyCom DLL (COM helper, separate from the main plugin)
 examples/cpp_call/       — Pure C++ static-link example / smoke test
-3rd_party/               — Kiero source + pre-built libs for some architectures
+3rd_party/               — kiero2 source only (no pre-built libs)
 op.sln                   — Native VS2022 solution (libop / op_x64 / op_c_api_x64 / tools / cpp_call / op_test)
 vs/                      — op.common.props (compile/link/MIDL), op.deps.props (paths), op.sources.props
-scripts/                 — bootstrap-deps.ps1 (BlackBone / OpenCV / MinHook)
+scripts/                 — bootstrap-deps.ps1、build.ps1、test.ps1、verify.ps1、package.ps1
 doc/cpp-only/            — Refactor notes, API changes, progress, native VS build guide
 ```
 

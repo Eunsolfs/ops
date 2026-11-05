@@ -290,3 +290,19 @@ pwsh scripts/verify.ps1                         # 四配置构建 + x64/x86 core
   `-NoTrackFileAccess`（`verify.ps1` 默认已带）绕过；代价是该次增量构建失效。
 - Release 现在也产出 PDB（`/Zi + /DEBUG`）；发布时把 PDB 与 DLL 一起归档。
 - CI workflow 目前仍未恢复（`.github/workflows/` 为空）；`verify.ps1` 可作为流水线主体。
+
+## 11. 打包分发（2026-11-05）
+
+```powershell
+pwsh scripts/package.ps1                 # x64 + Win32
+pwsh scripts/package.ps1 -Arch x64 -Build
+```
+
+产出（`dist/`，已 gitignore）：
+
+- `op-<ver>-<arch>.zip`：`bin/`（`op_c_api_*.dll`、`op_*.dll`、`tools.dll`）、`lib/`、`include/`
+  （`op_c_api.h`/`libop.h`/`op_version.h`）、`LICENSE`、`THIRD_PARTY_NOTICES.md`、`README.md`。
+- `op-<ver>-<arch>-symbols.zip`：Release PDB（线上崩溃符号化，单独分发）。
+
+版本号从 `include/op_version.h` 读取，与 `OpVer()`、资源版本保持一致；
+第三方许可清单见仓库根 `THIRD_PARTY_NOTICES.md`（OpenCV Apache-2.0、BlackBone/MinHook/kiero 等）。

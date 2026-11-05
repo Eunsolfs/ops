@@ -458,3 +458,16 @@ OpenCV   = 5.0.0
   OK 清零 → 缺图 IO → 落盘失败 CAPTURE → 无效 handle INVALID_HANDLE。
 - 验证：verify.ps1 四配置 0 error；x64 core 69 ran / 64 passed / 5 skipped；
   Win32 68 ran / 62 passed / 6 skipped；x64/x86 均导出 `OpGetLastErrorCode`（x86 含 @4 别名）。
+
+### 23:35 第 4 批（工程化）：打包 / 许可 / 测试分层 / 文档纠偏
+
+- G6：新增 `scripts/package.ps1`，从 `op_version.h` 读版本，产出
+  `dist/op-<ver>-<arch>.zip`（bin/lib/include/LICENSE/THIRD_PARTY_NOTICES/README）与
+  `-symbols.zip`（Release PDB）；`dist/` 加入 .gitignore。
+- 新增根 `THIRD_PARTY_NOTICES.md`：OpenCV(Apache-2.0)/BlackBone(MIT)/MinHook(BSD-2)/
+  kiero2(MIT)/DirectX-Headers(MIT)/gtest(BSD-3) 分发说明。
+- G8：新增 `tests/README.md`，把用例分层为 core/desktop/inject 并说明环境变量。
+- G5：修正 CLAUDE.md 漂移（libop.cpp 职责、AStar.h、ocr 文件路径、3rd_party 无预编译库、
+  scripts 列表）。
+- BUILD_VS 增补 §11 打包说明。
+- 验证：`pwsh scripts/package.ps1 -Arch x64` 成功产出 runtime 19MB / symbols 40MB zip。
