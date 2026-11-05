@@ -23,7 +23,10 @@
 | O9 | ✅ 已处理 | 新增 `include/op_version.h` 作为唯一来源；`op.rc`/`op_c_api.rc`/`AutomationModes.h` 引用，测试校验一致性 |
 | O24 | ◐ 部分处理 | DXGI staging 纹理复用 + 重建后 100ms 重试；GPU 子区域拷贝留待后续 |
 | O27 | ✅ 已处理 | 移除绑定前的无条件 UnBind（参数校验失败保留旧绑定）；`IsBind` 校验窗口是否仍存在 |
-| G4 | ✅ 已处理 | `OpCheckDependencies` 增加 gtest/minhook/directx-headers 检查；op_test 打开 `OpCheckGTest` |
+| G7 | ✅ 已处理 | 新增 `tests/bench_find_test.cpp` + `scripts/bench.ps1`；数据见 [PERF_BASELINE.md](PERF_BASELINE.md) |
+| O5 | ◐ 已有数据 | 基准显示 OpenCV 在 64px 模板上快 7–8×；结论：不改 `FindPic` 默认语义，大模板建议用 `OpCvMatch*`（详见 PERF_BASELINE §4） |
+| O20 | ◐ 评估完成 | `FindColor` 1080p 单色 2.8ms / 4 色 8.3ms，SIMD 收益有限，降为可选 |
+| O21 | ◐ 暂缓 | 只在同屏大量命中时有收益，需额外黄金用例 |
 | O4 | ◐ 部分处理 | 新增 `OpGetLastErrorCode`（OK/INVALID_HANDLE/INVALID_ARG/NOT_BOUND/CAPTURE/IO/BACKEND/INTERNAL）；OCR 后端错误尚未细分 |
 | O18 | ◐ 部分处理 | 错误码覆盖无效 handle，但 handle magic/UAF 诊断未做 |
 | O6 | ✅ 已处理 | 新增 `.github/workflows/ci.yml`：x64/x86 矩阵构建 + core 测试（依赖缓存），另有 docs 检查 job |

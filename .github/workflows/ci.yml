@@ -54,6 +54,11 @@ jobs:
         shell: pwsh
         run: pwsh -NoProfile -File scripts/test.ps1 -Platform ${{ matrix.platform }}
 
+      - name: Synthetic benchmark (x64 only)
+        if: matrix.arch == 'x64'
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/bench.ps1 -Platform x64 -OutFile build/bench-ci.log
+
   docs:
     runs-on: ubuntu-latest
     steps:

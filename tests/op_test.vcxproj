@@ -147,6 +147,7 @@
     <ClCompile Include="$(MSBuildThisFileDirectory)yolo_test.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)utils_test.cpp" />
     <ClCompile Include="$(MSBuildThisFileDirectory)opencv_test.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)bench_find_test.cpp" />
   </ItemGroup>
 
   <ItemGroup Label="OpTestLocalLibopSources">

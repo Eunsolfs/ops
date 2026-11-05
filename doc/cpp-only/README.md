@@ -19,6 +19,7 @@
   - [AUDIT_OCR_API.md](AUDIT_OCR_API.md)：OCR/API/COM/测试一致性
   - [AUDIT_BUILD.md](AUDIT_BUILD.md)：VS/x86/依赖脚本/op_test 构建链
 - [REVIEW_OPTIMIZATION.md](REVIEW_OPTIMIZATION.md)：当前分支的优化与拓展机会清单（2026-11-05，按优先级排序）
+- [PERF_BASELINE.md](PERF_BASELINE.md)：找图/找色合成基准数据与 O5/O20/O21 决策依据
 
 ---
 

@@ -281,6 +281,7 @@ pwsh scripts/build.ps1 -Target test -WarningsAsErrors   # 只构建 op_test，�
 pwsh scripts/test.ps1                           # core 集（不依赖 OCR/WGC/真实桌面）
 pwsh scripts/test.ps1 -Scope all                # 完整套件（需 OCR 服务与交互桌面）
 pwsh scripts/verify.ps1                         # 四配置构建 + x64/x86 core 测试
+pwsh scripts/bench.ps1                          # 合成图性能基准（约 50s，结果写 build/bench-latest.log）
 ```
 
 说明：

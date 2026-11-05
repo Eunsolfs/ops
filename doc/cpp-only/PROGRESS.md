@@ -483,3 +483,19 @@ OpenCV   = 5.0.0
 - O6：恢复 `.github/workflows/ci.yml`（x64/x86 构建 + core 测试 + 依赖缓存 + docs job）。
 - G5：修正 CLAUDE.md 架构描述、`.clang-tidy` 命令行用法；`OpSleep` 增加“阻塞消息泵”注释。
 - 验证：Release x64 构建 0 error；COM 3 项用例 PASS；下一步跑四配置 verify。
+
+### 23:40 合成基准（G7）与 O5/O20/O21 决策
+
+- 新增 `tests/bench_find_test.cpp`（`OP_RUN_BENCH=1` 才跑）与 `scripts/bench.ps1`，
+  覆盖 FindPic cold/warm、FindColor 1/4 色、OpenCV matchTemplate 基线；默认 30 行 CSV。
+- 新增 `doc/cpp-only/PERF_BASELINE.md`：Release x64、1280×720 / 1920×1080 / 2560×1440、
+  模板 32/64px 的 mean/p50/p95 与结论。
+- 关键数据：FindPic 64px 在 1080p 为 ~480ms，OpenCV matchTemplate ~63ms（**7.6×**）；
+  32px 为 135ms vs 51ms（2.6×）；FindPic 成本随模板面积近似线性（32→64px ≈3.6×），
+  说明瓶颈是 `real_match` 的逐像素 SAD，而非灰度/积分图预处理（8–19ms）。
+- 决策：不直接改 `FindPic` 默认语义；大模板/大 ROI 建议调用方走已有 `OpCvMatch*`；
+  O20（FindColor SIMD）降为可选（1080p 4 色 8.3ms）；O21 暂缓。
+- 尝试并回滚：9 点采样预筛（子集 SAD 上界是正确但过松，随机图不早退），实测无收益，已还原。
+- CI：x64 job 增加 `scripts/bench.ps1` 冒烟步骤（不设阈值）。
+- 验证：verify.ps1 四配置 0 error；x64 core 69 ran / 64 passed / 5 skipped；
+  Win32 68 ran / 62 passed / 6 skipped；x86 bench 冒烟 PASS。
