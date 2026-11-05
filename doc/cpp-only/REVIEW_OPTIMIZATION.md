@@ -26,9 +26,37 @@
 | G4 | ✅ 已处理 | `OpCheckDependencies` 增加 gtest/minhook/directx-headers 检查；op_test 打开 `OpCheckGTest` |
 | O4 | ◐ 部分处理 | 新增 `OpGetLastErrorCode`（OK/INVALID_HANDLE/INVALID_ARG/NOT_BOUND/CAPTURE/IO/BACKEND/INTERNAL）；OCR 后端错误尚未细分 |
 | O18 | ◐ 部分处理 | 错误码覆盖无效 handle，但 handle magic/UAF 诊断未做 |
+| O6 | ✅ 已处理 | 新增 `.github/workflows/ci.yml`：x64/x86 矩阵构建 + core 测试（依赖缓存），另有 docs 检查 job |
+| O15 | ✅ 已处理 | 采集失败时 `GetColor` 返回空串（不再伪造 `"000000"`），错误码置 `CAPTURE` |
+| O16 | ✅ 已处理 | COM 层增加 `prepare_variant` 守卫（25 处 VARIANT 解引用）与 NULL BSTR 检查；新增空指针用例 |
+| G5 | ◐ 部分处理 | 修正 CLAUDE.md 架构描述与 `.clang-tidy` 用法；README 仍指向上游 release（fork 不发布二进制） |
 
-> 尚未处理：O4/O5/O6/O11/O12/O14–O16/O18/O20–O23/O25/O26/O28–O30、E1–E8、G3/G5–G8。
-> 正文保留原始分析，作为后续批次清单。
+### 待处理项评估（2026-11-05）
+
+| 项 | 必要性 | 结论 |
+| --- | --- | --- |
+| O5 找图后端切换 | 待测量 | 会改变命中语义（并列命中取点），先补 G7 基准再决策 |
+| O11 `OpSleep` | 文档即可 | 已加“阻塞消息泵，UI 线程用 Delay”注释，不改行为 |
+| O12 结果字符串 | 可选 | 兼容接口保留；结构化结果由 E3 覆盖 |
+| O14 返回值收敛 | 不建议 | 会破坏现有调用方（Twinkle 依赖 1/0/-1 组合）；错误码已能区分失败阶段 |
+| O18 handle magic | 低收益 | 只能诊断不能防 UAF；错误码已覆盖无效 handle |
+| O20 逐像素 SIMD | 待测量 | 无基准证据，改动面大 |
+| O21 `FindPicEx` 排序 | 可选 | 需先固化跨模板命中顺序测试 |
+| O22 透明模板预筛 | 待测量 | 仅在大量透明模板时收益明显 |
+| O23 OCR 传输 | 当前不必 | Twinkle 使用自有 OcrPipeService，ops OCR 非热路径；启用后再优化 |
+| O25 Hook 热路径 | 必要（专项） | 影响目标进程性能/正确性，需真机 DX 矩阵与 `FrameInfo` 版本化 |
+| O26 输入批量 | 必要（专项） | windows/dx 模式长文本慢；协议改动需真机回归 |
+| O28 采集自愈 | 专项 | 绑定核心改动，需真机切屏/窗口重建验证 |
+| O29 时序/Unicode | 专项 | dead key/emoji/轨迹时长；需输入回归矩阵 |
+| O30 帧观测/光标 | 专项 | 依赖 O25 的 `FrameInfo` 版本化 |
+| E1–E4 | 可选 | 能力增强，按宿主需求排期 |
+| E5 OCR 池 | 不必 | 同 O23 |
+| E6 hook/memory/ipc 测试 | 必要（长期） | 零覆盖是最大质量风险，建议随专项逐步补 |
+| E7 分发 | 部分完成 | `package.ps1` + NOTICES 已就绪；vcpkg/NuGet 可选 |
+| G3 测试资产 | 必要（需素材） | 需要可再分发的图片与许可说明 |
+| G7 bench/soak | 必要（下一步） | 是 O5/O20/O21/O22 决策的前提 |
+
+> 本轮已执行：O6 / O15 / O16 / G5（部分）。正文保留原始分析；专项项建议单独开轮次并配真机矩阵。
 
 
 ---

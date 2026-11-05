@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, slim/cpp-only-vs]
+  pull_request:
+    branches: [master, main, slim/cpp-only-vs]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: x64
+            arch: x64
+          - platform: Win32
+            arch: x86
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache third-party dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/_deps
+            C:\vcpkg\installed
+          key: op-deps-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('scripts/bootstrap-deps.ps1', 'vs/op.deps.props') }}
+          restore-keys: |
+            op-deps-${{ runner.os }}-${{ matrix.arch }}-
+
+      - name: Bootstrap dependencies (${{ matrix.arch }})
+        shell: pwsh
+        run: |
+          $vcpkg = $env:VCPKG_INSTALLATION_ROOT
+          if (-not $vcpkg) { $vcpkg = "C:\vcpkg" }
+          pwsh -NoProfile -File scripts/bootstrap-deps.ps1 -Arch ${{ matrix.arch }} -VcpkgRoot $vcpkg
+
+      - name: Build Release ${{ matrix.platform }}
+        shell: pwsh
+        run: >
+          pwsh -NoProfile -File scripts/build.ps1
+          -Configuration Release -Platform ${{ matrix.platform }}
+          -NoTrackFileAccess
+
+      - name: Core tests ${{ matrix.platform }}
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/test.ps1 -Platform ${{ matrix.platform }}
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify version header and key docs exist
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f include/op_version.h
+          grep -q 'OP_VERSION_STRING "' include/op_version.h
+          test -f README.md
+          test -f doc/cpp-only/API_CHANGES.md
+          echo "docs check ok"

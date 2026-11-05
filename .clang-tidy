@@ -3,11 +3,13 @@
 #
 # 怎么用:
 #   - 编辑器(clangd):自动读取本文件,打开源码即生效,无需额外步骤(推荐)。
-#   - 命令行:需要 compile_commands.json。VS 生成器不产出它,改用 Ninja 生成一次:
-#       python build.py -g ninja            # 在 build/ninja-* 下产出 compile_commands.json
-#       clang-tidy -p build/<builddir> libop/<file>.cpp
+#   - 命令行:需要 compile_commands.json。本仓库已改为原生 VS 工程(op.sln),
+#     MSBuild 不产出该文件。可选做法：
+#       * 用 clangd/编辑器读取本配置（推荐，无需 compile_commands 也能做单文件检查）；
+#       * 或自行用 CMake/编译数据库工具生成（仓库不再提供 CMake 构建链）；
+#       * 或用 MSVC 自带静态分析：msbuild op.sln /p:RunCodeAnalysis=true。
 #   - 一次性把存量 NULL 改成 nullptr(安全、可自动修复,清掉 modernize-use-nullptr 告警):
-#       clang-tidy -p build/<builddir> --fix --checks='-*,modernize-use-nullptr' libop/**/*.cpp
+#       clang-tidy -p <compile_commands 目录> --fix --checks='-*,modernize-use-nullptr' libop/**/*.cpp
 #
 # 全部为 warning,不阻断构建/提交。命名规范暂以注释记录,等做完一次命名归一再开启增量守护。
 

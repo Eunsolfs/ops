@@ -188,6 +188,15 @@ TEST(UtilsTest, ComLateBindingAndRetiredMembers) {
               DISP_E_MEMBERNOTFOUND);
     VariantClear(&result);
 
+    // COM 层空指针守卫：VARIANT 输出参数为 NULL 时返回 E_POINTER 而不是 AV。
+    IOpAutomation2 *api = nullptr;
+    ASSERT_TRUE(SUCCEEDED(dispatch->QueryInterface(IID_IOpAutomation2, reinterpret_cast<void **>(&api))));
+    LONG nret = 0;
+    EXPECT_EQ(api->ClientToScreen(0, nullptr, nullptr, &nret), E_POINTER);
+    EXPECT_EQ(api->GetClientRect(0, nullptr, nullptr, nullptr, nullptr, &nret), E_POINTER);
+    EXPECT_EQ(api->FindPic(0, 0, 1, 1, nullptr, nullptr, 0.9, 0, nullptr, nullptr, &nret), E_POINTER);
+    api->Release();
+
     dispatch->Release();
     factory->Release();
     if (typelib_registered_here && type_attr)

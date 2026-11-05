@@ -121,6 +121,7 @@ class OP_API Op {
     void SetShowErrorMsg(_In_ long show_type, _Out_ long *ret);
 
     // sleep
+    // 硬睡眠（::Sleep）：会阻塞调用线程的消息泵；UI/消息线程请用 Delay（可处理消息）。
     void Sleep(_In_ long millseconds, _Out_ long *ret);
     // Process
     // inject dll

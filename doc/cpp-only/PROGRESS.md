@@ -471,3 +471,15 @@ OpenCV   = 5.0.0
   scripts 列表）。
 - BUILD_VS 增补 §11 打包说明。
 - 验证：`pwsh scripts/package.ps1 -Arch x64` 成功产出 runtime 19MB / symbols 40MB zip。
+
+### 23:50 第 5 批：待处理项评估 + COM 守卫 / GetColor 语义 / CI
+
+- 评估结论：O6/O15/O16 必要并已执行；O5/O20/O21/O22 需先有基准（G7）再决策；
+  O14 不建议（破坏兼容）；O23/E5 当前不必（Twinkle 不用 ops OCR）；
+  O25/O26/O28/O29/O30 属高风险专项，需真机矩阵单独排期。
+- O16：COM `prepare_variant()` 统管 25 处 VARIANT 解引用，NULL 返回 `E_POINTER`；
+  `SetPath` NULL BSTR 同样处理；`ComLateBindingAndRetiredMembers` 增加空指针断言。
+- O15：`GetColor` 采集失败返回空串 + `CAPTURE` 错误码，不再伪造 `"000000"`。
+- O6：恢复 `.github/workflows/ci.yml`（x64/x86 构建 + core 测试 + 依赖缓存 + docs job）。
+- G5：修正 CLAUDE.md 架构描述、`.clang-tidy` 命令行用法；`OpSleep` 增加“阻塞消息泵”注释。
+- 验证：Release x64 构建 0 error；COM 3 项用例 PASS；下一步跑四配置 verify。

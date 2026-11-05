@@ -315,3 +315,14 @@ OP_C_API int OP_CALL OpGetLastErrorCode(op_handle handle);
 - 无效 handle 调用 `OpGetLastErrorCode` 返回 `OP_ERR_INVALID_HANDLE`。
 - 与 `OpGetLastError`（Win32 `GetLastError` 残留值）互不影响；旧接口保留兼容。
 - 覆盖范围：C API；COM 层暂未暴露错误码，late-binding 客户端仍只能看 HRESULT/返回值。
+
+## 10. 2026-11-05 第 5 批：COM 空指针守卫与 GetColor 失败语义
+
+- **COM 空参数守卫**：`OpAutomation` 的 VARIANT 输出参数统一走 `prepare_variant()`（只设置
+  `vt`、不初始化值，避免清掉调用方传入的坐标），空指针返回 `E_POINTER`；
+  `SetPath` 的 NULL BSTR 同样返回 `E_POINTER`。覆盖此前 25 处裸解引用（late-binding /
+  脚本客户端传空参数不再 AV）。新增用例验证 `ClientToScreen/GetClientRect/FindPic` 传 NULL 返回 `E_POINTER`。
+- **`OpGetColor` 失败语义**：采集失败时返回空串并把错误码置 `OP_ERR_CAPTURE`，不再返回零初始化
+  的 `"000000"`（与真实黑色无法区分，Twinkle 的 `color.empty()` 判失败会误判）。
+  正常成功时行为不变。
+- **CI**：新增 `.github/workflows/ci.yml`（x64/x86 矩阵构建 + core 测试 + 依赖缓存，另有 docs job）。

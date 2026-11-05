@@ -30,6 +30,16 @@ HRESULT CopyOutBstr(BSTR *target, const std::wstring &value) {
     return out.CopyTo(target);
 }
 
+
+// 输出 VARIANT 参数守卫：空指针直接 E_POINTER；只设置类型，不初始化值
+// （部分方法的 lVal 同时是输入坐标，VariantInit 会清掉调用方传入的值）。
+bool prepare_variant(VARIANT *value, VARTYPE type) {
+    if (!value)
+        return false;
+    value->vt = type;
+    return true;
+}
+
 template <typename Callback>
 HRESULT RunCvRetOnly(LONG *ret, Callback &&callback) {
     if (!ret)
@@ -98,6 +108,8 @@ STDMETHODIMP OpAutomation::Ver(BSTR *ret) {
 }
 
 STDMETHODIMP OpAutomation::SetPath(BSTR path, LONG *ret) {
+    if (!path)
+        return E_POINTER;
 
     obj.SetPath(path, ret);
     return S_OK;
@@ -214,8 +226,10 @@ STDMETHODIMP OpAutomation::EnumProcess(BSTR name, BSTR *retstring) {
 }
 
 STDMETHODIMP OpAutomation::ClientToScreen(LONGLONG hwnd, VARIANT *x, VARIANT *y, LONG *bret) {
-    x->vt = VT_I4;
-    y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y, VT_I4))
+        return E_POINTER;
     long lx = x->lVal;
     long ly = y->lVal;
     obj.ClientToScreen(static_cast<LONG_PTR>(hwnd), &lx, &ly, bret);
@@ -249,18 +263,24 @@ STDMETHODIMP OpAutomation::FindWindowEx(LONGLONG parent, BSTR class_name, BSTR t
 }
 
 STDMETHODIMP OpAutomation::GetClientRect(LONGLONG hwnd, VARIANT *x1, VARIANT *y1, VARIANT *x2, VARIANT *y2, LONG *nret) {
-    x1->vt = VT_I4;
-    y1->vt = VT_I4;
-    x2->vt = VT_I4;
-    y2->vt = VT_I4;
+    if (!prepare_variant(x1, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y1, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(x2, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y2, VT_I4))
+        return E_POINTER;
     obj.GetClientRect(static_cast<LONG_PTR>(hwnd), &x1->lVal, &y1->lVal, &x2->lVal, &y2->lVal, nret);
 
     return S_OK;
 }
 
 STDMETHODIMP OpAutomation::GetClientSize(LONGLONG hwnd, VARIANT *width, VARIANT *height, LONG *nret) {
-    width->vt = VT_I4;
-    height->vt = VT_I4;
+    if (!prepare_variant(width, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(height, VT_I4))
+        return E_POINTER;
     obj.GetClientSize(static_cast<LONG_PTR>(hwnd), &width->lVal, &height->lVal, nret);
 
     return S_OK;
@@ -334,10 +354,14 @@ STDMETHODIMP OpAutomation::GetWindowProcessPath(LONGLONG hwnd, BSTR *retstring) 
 }
 
 STDMETHODIMP OpAutomation::GetWindowRect(LONGLONG hwnd, VARIANT *x1, VARIANT *y1, VARIANT *x2, VARIANT *y2, LONG *nret) {
-    x1->vt = VT_I4;
-    x2->vt = VT_I4;
-    y1->vt = VT_I4;
-    y2->vt = VT_I4;
+    if (!prepare_variant(x1, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(x2, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y1, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y2, VT_I4))
+        return E_POINTER;
 
     obj.GetWindowRect(static_cast<LONG_PTR>(hwnd), &x1->lVal, &y1->lVal, &x2->lVal, &y2->lVal, nret);
 
@@ -365,8 +389,10 @@ STDMETHODIMP OpAutomation::MoveWindow(LONGLONG hwnd, LONG x, LONG y, LONG *nret)
 }
 
 STDMETHODIMP OpAutomation::ScreenToClient(LONGLONG hwnd, VARIANT *x, VARIANT *y, LONG *nret) {
-    x->vt = VT_I4;
-    y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(y, VT_I4))
+        return E_POINTER;
     obj.ScreenToClient(static_cast<LONG_PTR>(hwnd), &x->lVal, &y->lVal, nret);
 
     return S_OK;
@@ -503,7 +529,8 @@ STDMETHODIMP OpAutomation::IsBind(LONG *ret) {
 }
 
 STDMETHODIMP OpAutomation::GetCursorPos(VARIANT *x, VARIANT *y, LONG *ret) {
-    x->vt = y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4) || !prepare_variant(y, VT_I4))
+        return E_POINTER;
     obj.GetCursorPos(&x->lVal, &y->lVal, ret);
 
     return S_OK;
@@ -794,7 +821,9 @@ STDMETHODIMP OpAutomation::CmpColor(LONG x, LONG y, BSTR color, DOUBLE sim, LONG
 STDMETHODIMP OpAutomation::FindColor(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, LONG dir, VARIANT *x,
                                     VARIANT *y, LONG *ret) {
 
-    x->vt = y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4) || !prepare_variant(y, VT_I4))
+
+        return E_POINTER;
 
     obj.FindColor(x1, y1, x2, y2, color, sim, dir, &x->lVal, &y->lVal, ret);
 
@@ -823,7 +852,8 @@ STDMETHODIMP OpAutomation::FindMultiColor(LONG x1, LONG y1, LONG x2, LONG y2, BS
         return E_POINTER;
 
     SetOutValue(ret, 0L);
-    x->vt = y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4) || !prepare_variant(y, VT_I4))
+        return E_POINTER;
     obj.FindMultiColor(x1, y1, x2, y2, first_color, offset_color, sim, dir, &x->lVal, &y->lVal, ret);
 
     return S_OK;
@@ -841,7 +871,9 @@ STDMETHODIMP OpAutomation::FindMultiColorEx(LONG x1, LONG y1, LONG x2, LONG y2, 
 STDMETHODIMP OpAutomation::FindPic(LONG x1, LONG y1, LONG x2, LONG y2, BSTR files, BSTR delta_color, DOUBLE sim,
                                   LONG dir, VARIANT *x, VARIANT *y, LONG *ret) {
 
-    x->vt = y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4) || !prepare_variant(y, VT_I4))
+
+        return E_POINTER;
     obj.FindPic(x1, y1, x2, y2, files, delta_color, sim, dir, &x->lVal, &y->lVal, ret);
 
     return S_OK;
@@ -867,7 +899,8 @@ STDMETHODIMP OpAutomation::FindPicExS(LONG x1, LONG y1, LONG x2, LONG y2, BSTR f
 // 查找指定区域内的颜色块,颜色格式"RRGGBB-DRDGDB",注意,和按键的颜色格式相反
 STDMETHODIMP OpAutomation::FindColorBlock(LONG x1, LONG y1, LONG x2, LONG y2, BSTR color, DOUBLE sim, LONG count,
                                          LONG height, LONG width, VARIANT *x, VARIANT *y, LONG *ret) {
-    x->vt = y->vt = VT_I4;
+    if (!prepare_variant(x, VT_I4) || !prepare_variant(y, VT_I4))
+        return E_POINTER;
     obj.FindColorBlock(x1, y1, x2, y2, color, sim, count, height, width, &x->lVal, &y->lVal, ret);
     return S_OK;
 }
@@ -913,7 +946,8 @@ STDMETHODIMP OpAutomation::LoadMemPic(BSTR pic_name, long long data, LONG size, 
 }
 
 STDMETHODIMP OpAutomation::GetPicSize(BSTR pic_name, VARIANT *width, VARIANT *height, LONG *ret) {
-    width->vt = height->vt = VT_I4;
+    if (!prepare_variant(width, VT_I4) || !prepare_variant(height, VT_I4))
+        return E_POINTER;
     obj.GetPicSize(pic_name, &width->lVal, &height->lVal, ret);
     return S_OK;
 }
@@ -934,13 +968,17 @@ STDMETHODIMP OpAutomation::GetScreenData(LONG x1, LONG y1, LONG x2, LONG y2, LON
 STDMETHODIMP OpAutomation::GetScreenDataBmp(LONG x1, LONG y1, LONG x2, LONG y2, VARIANT *data, VARIANT *size,
                                            LONG *ret) {
 #if OP64
-    data->vt = VT_I8;
-    size->vt = VT_I8;
+    if (!prepare_variant(data, VT_I8))
+        return E_POINTER;
+    if (!prepare_variant(size, VT_I8))
+        return E_POINTER;
     data->llVal = 0;
     size->llVal = 0;
 #else
-    data->vt = VT_I4;
-    size->vt = VT_I4;
+    if (!prepare_variant(data, VT_I4))
+        return E_POINTER;
+    if (!prepare_variant(size, VT_I4))
+        return E_POINTER;
     data->lVal = 0;
     size->lVal = 0;
 #endif
@@ -994,7 +1032,8 @@ STDMETHODIMP OpAutomation::FindStr(LONG x1, LONG y1, LONG x2, LONG y2, BSTR strs
                                   VARIANT *rety, LONG *ret) {
     if (!retx || !rety)
         return E_POINTER;
-    retx->vt = rety->vt = VT_INT;
+    if (!prepare_variant(retx, VT_INT) || !prepare_variant(rety, VT_INT))
+        return E_POINTER;
     obj.FindStr(x1, y1, x2, y2, strs, color, sim, &retx->lVal, &rety->lVal, ret);
 
     return S_OK;

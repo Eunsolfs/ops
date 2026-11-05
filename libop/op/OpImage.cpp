@@ -181,12 +181,18 @@ void op::Op::FindColorBlockEx(long x1, long y1, long x2, long y2, const wchar_t 
 
 // 获取(x,y)的颜色
 void op::Op::GetColor(long x, long y, std::wstring &ret) {
-    color_t cr;
+    color_t cr = {};
     auto tx = x + small_block_size, ty = y + small_block_size;
     internal::with_captured_region(m_context.get(), x, y, tx, ty, small_block_size, small_block_size, [&]() {
         cr = m_context->image_proc._src.at<color_t>(0, 0);
     });
 
+    // 采集失败时不要回退成零初始化的 "000000"：那与真实黑色无法区分，
+    // 上层（如 Twinkle 用 color.empty() 判失败）会误判为成功。
+    if (m_context->last_error_code != 0) {
+        ret.clear();
+        return;
+    }
     ret = cr.towstr();
 }
 
