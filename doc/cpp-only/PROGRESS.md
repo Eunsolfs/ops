@@ -446,3 +446,15 @@ OpenCV   = 5.0.0
 - 已知环境问题（与本批改动无关，WGC 后端未改动）：`WgcTest.FirstFrameResizeAndCloseScenarios`
   场景 #4 在本机稳定失败（窗口销毁后 WGC 仍能取到上一帧，日志中无 "capture item closed"），
   待单独排查；core 集不包含该用例。
+
+### 23:15 第 3 批：C API 分类错误码（O4）
+
+- 新增 `OpGetLastErrorCode` + `op_error_code` 枚举（OK/INVALID_HANDLE/INVALID_ARG/NOT_BOUND/
+  CAPTURE/NOT_FOUND/IO/BACKEND/INTERNAL），C API 每次调用入口自动清零。
+- 失败阶段落点：`capture_region`（CAPTURE/NOT_BOUND/INVALID_ARG）、`SetPath`/图片不存在
+  （IO）、`BindWindow*` 返回 0（BACKEND）、`OpCapture` 落盘失败（CAPTURE）、C++ 异常（INTERNAL）。
+- 旧 `OpGetLastError`（Win32 残留值）保留不动；头文件注明两者区别。
+- 新增 `ImageColorTest.ErrorCodeDistinguishesFailureStages`：
+  OK 清零 → 缺图 IO → 落盘失败 CAPTURE → 无效 handle INVALID_HANDLE。
+- 验证：verify.ps1 四配置 0 error；x64 core 69 ran / 64 passed / 5 skipped；
+  Win32 68 ran / 62 passed / 6 skipped；x64/x86 均导出 `OpGetLastErrorCode`（x86 含 @4 别名）。

@@ -294,3 +294,24 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
   共用同一份“字符串 → color_df 列表”缓存（每 handle 最多 64 条），高频轮询不再重复 split/解析。
 - **构建依赖预检**：`OpCheckDependencies` 增加 gtest.lib / minhook.h / directx/d3d12.h 检查，
   `tests/op_test.vcxproj` 设置 `OpCheckGTest=true`；缺依赖时在编译前给出可读报错。
+
+## 9. 2026-11-05 第 3 批：分类错误码
+
+新增 C API（纯增，旧接口语义不变）：
+
+```c
+typedef enum op_error_code {
+    OP_ERR_OK = 0, OP_ERR_INVALID_HANDLE = 1, OP_ERR_INVALID_ARG = 2,
+    OP_ERR_NOT_BOUND = 3, OP_ERR_CAPTURE = 4, OP_ERR_NOT_FOUND = 5,
+    OP_ERR_IO = 6, OP_ERR_BACKEND = 7, OP_ERR_INTERNAL = 8
+} op_error_code;
+OP_C_API int OP_CALL OpGetLastErrorCode(op_handle handle);
+```
+
+- 每次 C API 调用入口自动清零，失败时记录阶段：
+  `capture_region` 采集失败 → `CAPTURE`；未绑定/`check_bind` 失败 → `NOT_BOUND`；
+  区域参数非法 → `INVALID_ARG`；`SetPath`/图片不存在/读图失败 → `IO`；
+  `BindWindow*` 返回 0 → `BACKEND`；C++ 异常被 `call_*` 捕获 → `INTERNAL`。
+- 无效 handle 调用 `OpGetLastErrorCode` 返回 `OP_ERR_INVALID_HANDLE`。
+- 与 `OpGetLastError`（Win32 `GetLastError` 残留值）互不影响；旧接口保留兼容。
+- 覆盖范围：C API；COM 层暂未暴露错误码，late-binding 客户端仍只能看 HRESULT/返回值。

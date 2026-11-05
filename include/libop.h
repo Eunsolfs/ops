@@ -112,7 +112,12 @@ class OP_API Op {
     void GetID(_Out_ long *ret);
     //
     void GetLastError(_Out_ long *ret);
-    // 设置是否弹出错误信息,默认是打开 0:关闭，1:显示为信息框，2:保存到文件,3:输出到标准输出
+    // 最近一次调用的分类错误码（0=成功，其余见 op_error_code）。C API 每次调用入口会清零。
+    void GetLastErrorCode(_Out_ long *ret);
+    // 内部使用：清零/写入分类错误码（C API 包装层在入口/异常时调用）。
+    void ResetLastError();
+    void SetLastErrorCode(_In_ long code);
+    // 设置是否弹出错误信息,默认是关闭 0:关闭，1:显示为信息框，2:保存到文件,3:输出到标准输出
     void SetShowErrorMsg(_In_ long show_type, _Out_ long *ret);
 
     // sleep

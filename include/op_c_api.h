@@ -66,8 +66,23 @@ OP_C_API const wchar_t *OP_CALL OpGetPath(op_handle handle);
 OP_C_API const wchar_t *OP_CALL OpGetBasePath(op_handle handle);
 OP_C_API int OP_CALL OpGetID(op_handle handle);
 // 返回最近一次 Win32 错误码（::GetLastError 的值），不是库内分类错误码。
-// 因此失败时该值可能是 0 或上一次无关调用的残留；需要分类错误请等后续的错误信息 API。
+// 因此失败时该值可能是 0 或上一次无关调用的残留；需要分类错误请用下面的
+// OpGetLastErrorCode（每次调用入口自动清零）。
 OP_C_API int OP_CALL OpGetLastError(op_handle handle);
+// 分类错误码：每次调用入口清零，失败时记录具体阶段。0 表示最近一次调用成功。
+// 与 Win32 GetLastError 无关；用于区分“未绑定 / 采集失败 / IO / 后端不可用”等场景。
+typedef enum op_error_code {
+    OP_ERR_OK = 0,
+    OP_ERR_INVALID_HANDLE = 1,
+    OP_ERR_INVALID_ARG = 2,
+    OP_ERR_NOT_BOUND = 3,
+    OP_ERR_CAPTURE = 4,
+    OP_ERR_NOT_FOUND = 5,
+    OP_ERR_IO = 6,
+    OP_ERR_BACKEND = 7,
+    OP_ERR_INTERNAL = 8
+} op_error_code;
+OP_C_API int OP_CALL OpGetLastErrorCode(op_handle handle);
 // 进程级日志/错误提示开关（所有句柄共享）：0=静默（默认），1=MessageBox，2=写 __op.log，
 // 3=stdout。默认值改为 0，避免无头宿主被模态框卡住；需要提示时显式设为 1。
 OP_C_API int OP_CALL OpSetShowErrorMsg(op_handle handle, int show_type);

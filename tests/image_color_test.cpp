@@ -728,3 +728,25 @@ TEST(ImageColorTest, CopyScreenDataMatchesMemInput) {
     EXPECT_EQ(ret, -2);
     EXPECT_EQ(needed, static_cast<long>(pixels.size()));
 }
+
+TEST(ImageColorTest, ErrorCodeDistinguishesFailureStages) {
+    op_handle handle = OpCreate();
+    ASSERT_NE(handle, nullptr);
+
+    // 成功调用会把错误码清零。
+    EXPECT_EQ(OpSetPath(handle, L"."), 1);
+    EXPECT_EQ(OpGetLastErrorCode(handle), OP_ERR_OK);
+
+    // 图片不存在：IO。
+    EXPECT_EQ(OpLoadPic(handle, L"op_no_such_picture_12345.bmp"), 0);
+    EXPECT_EQ(OpGetLastErrorCode(handle), OP_ERR_IO);
+
+    // 截图落盘失败（目录不存在）：CAPTURE。
+    EXPECT_EQ(OpCapture(handle, 0, 0, 16, 16, L"Z:\\op_no_such_dir_12345\\x.bmp"), 0);
+    EXPECT_EQ(OpGetLastErrorCode(handle), OP_ERR_CAPTURE);
+
+    // 无效句柄返回 INVALID_HANDLE。
+    EXPECT_EQ(OpGetLastErrorCode(nullptr), OP_ERR_INVALID_HANDLE);
+
+    OpDestroy(handle);
+}

@@ -183,6 +183,8 @@ EXPORTS
     OpGetKeyState=_OpGetKeyState@8
     _OpGetLastError@4
     OpGetLastError=_OpGetLastError@4
+    _OpGetLastErrorCode@4
+    OpGetLastErrorCode=_OpGetLastErrorCode@4
     _OpGetMousePointWindow@4
     OpGetMousePointWindow=_OpGetMousePointWindow@4
     _OpGetPath@4

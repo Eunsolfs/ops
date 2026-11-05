@@ -45,6 +45,7 @@ std::wstring absolute_path(const std::wstring &path) {
 void op::Op::SetPath(const wchar_t *path, long *ret) {
     if (!path) {
         setlog(L"SetPath: path is null");
+        internal::set_last_error(m_context.get(), internal::OpErrorCode::invalid_arg);
         internal::set_result(ret, 0L);
         return;
     }
@@ -64,6 +65,7 @@ void op::Op::SetPath(const wchar_t *path, long *ret) {
 
         if (!::PathFileExistsW(fpath.data())) {
             setlog("path '%s' not exists", fpath.data());
+            internal::set_last_error(m_context.get(), internal::OpErrorCode::io);
             internal::set_result(ret, 0L);
             return;
         }
@@ -90,6 +92,20 @@ void op::Op::GetID(long *ret) {
 
 void op::Op::GetLastError(long *ret) {
     internal::set_result(ret, ::GetLastError());
+}
+
+void op::Op::GetLastErrorCode(long *ret) {
+    internal::set_result(ret, m_context ? m_context->last_error_code : static_cast<long>(internal::OpErrorCode::invalid_handle));
+}
+
+void op::Op::ResetLastError() {
+    if (m_context)
+        m_context->last_error_code = 0;
+}
+
+void op::Op::SetLastErrorCode(long code) {
+    if (m_context)
+        m_context->last_error_code = code;
 }
 
 void op::Op::SetShowErrorMsg(long show_type, long *ret) {

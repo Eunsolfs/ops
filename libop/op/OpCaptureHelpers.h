@@ -16,6 +16,7 @@ void capture_region(OpContext *context, long x, long y, long width, long height,
 
     if (!context->bkproc.requestCapture(x, y, width, height, context->image_proc._src)) {
         setlog("error requestCapture");
+        set_last_error(context, OpErrorCode::capture);
         return;
     }
 
@@ -40,21 +41,39 @@ void capture_converted_region(OpContext *context, long x1, long y1, long x2, lon
 template <typename Fn>
 void with_captured_region(OpContext *context, long &x1, long &y1, long &x2, long &y2, long width, long height,
                           Fn &&fn) {
-    if (!context || !context->bkproc.check_bind() || !context->bkproc.RectConvert(x1, y1, x2, y2))
+    if (!context)
         return;
+    if (!context->bkproc.check_bind()) {
+        set_last_error(context, OpErrorCode::not_bound);
+        return;
+    }
+    if (!context->bkproc.RectConvert(x1, y1, x2, y2)) {
+        set_last_error(context, OpErrorCode::invalid_arg);
+        return;
+    }
 
     const long capture_width = (std::min)(width, x2 - x1);
     const long capture_height = (std::min)(height, y2 - y1);
-    if (capture_width <= 0 || capture_height <= 0)
+    if (capture_width <= 0 || capture_height <= 0) {
+        set_last_error(context, OpErrorCode::invalid_arg);
         return;
+    }
 
     capture_region(context, x1, y1, capture_width, capture_height, std::forward<Fn>(fn));
 }
 
 template <typename Fn>
 void with_captured_region(OpContext *context, long &x1, long &y1, long &x2, long &y2, Fn &&fn) {
-    if (!context || !context->bkproc.check_bind() || !context->bkproc.RectConvert(x1, y1, x2, y2))
+    if (!context)
         return;
+    if (!context->bkproc.check_bind()) {
+        set_last_error(context, OpErrorCode::not_bound);
+        return;
+    }
+    if (!context->bkproc.RectConvert(x1, y1, x2, y2)) {
+        set_last_error(context, OpErrorCode::invalid_arg);
+        return;
+    }
 
     const long width = x2 - x1;
     const long height = y2 - y1;

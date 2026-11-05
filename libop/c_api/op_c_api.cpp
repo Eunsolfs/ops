@@ -44,9 +44,11 @@ int call_int(op_handle handle, Func &&func) {
     if (!op)
         return 0;
 
+    op->ResetLastError();
     try {
         return static_cast<int>(std::forward<Func>(func)(*op));
     } catch (...) {
+        op->SetLastErrorCode(8); // internal
         return 0;
     }
 }
@@ -65,11 +67,13 @@ intptr_t call_intptr(op_handle handle, Func &&func) {
     if (!handle)
         return 0;
 
+    handle->op.ResetLastError();
     try {
         LONG_PTR ret = 0;
         std::forward<Func>(func)(handle->op, &ret);
         return static_cast<intptr_t>(ret);
     } catch (...) {
+        handle->op.SetLastErrorCode(8); // internal
         return 0;
     }
 }
@@ -79,11 +83,13 @@ const wchar_t *call_string(op_handle handle, Func &&func) {
     if (!handle)
         return L"";
 
+    handle->op.ResetLastError();
     try {
         handle->string_result.clear();
         std::forward<Func>(func)(handle->op, handle->string_result);
         return handle->string_result.c_str();
     } catch (...) {
+        handle->op.SetLastErrorCode(8); // internal
         return L"";
     }
 }
@@ -93,6 +99,7 @@ const wchar_t *call_json_string(op_handle handle, const wchar_t *fallback, Func 
     if (!handle)
         return fallback;
 
+    handle->op.ResetLastError();
     try {
         handle->string_result.clear();
         std::forward<Func>(func)(handle->op, handle->string_result);
@@ -100,6 +107,7 @@ const wchar_t *call_json_string(op_handle handle, const wchar_t *fallback, Func 
             handle->string_result = fallback;
         return handle->string_result.c_str();
     } catch (...) {
+        handle->op.SetLastErrorCode(8); // internal
         return fallback;
     }
 }
@@ -140,11 +148,13 @@ int call_memory(op_handle handle, intptr_t hwnd, Func &&func) {
     if (!handle)
         return 0;
 
+    handle->op.ResetLastError();
     try {
         ProcessMemory mem;
         const LONG_PTR target = resolve_memory_hwnd(handle, hwnd);
         return std::forward<Func>(func)(mem, reinterpret_cast<HWND>(target)) ? 1 : 0;
     } catch (...) {
+        handle->op.SetLastErrorCode(8); // internal
         return 0;
     }
 }
@@ -199,6 +209,15 @@ int OP_CALL OpGetID(op_handle handle) {
 
 int OP_CALL OpGetLastError(op_handle handle) {
     return call_ret(handle, [](op::Op &op, long *ret) { op.GetLastError(ret); });
+}
+
+int OP_CALL OpGetLastErrorCode(op_handle handle) {
+    // 故意不走 call_* 包装：它们会在入口清零错误码。
+    if (!handle)
+        return 1; // OP_ERR_INVALID_HANDLE
+    long code = 0;
+    handle->op.GetLastErrorCode(&code);
+    return static_cast<int>(code);
 }
 
 int OP_CALL OpSetShowErrorMsg(op_handle handle, int show_type) {
@@ -794,6 +813,7 @@ uintptr_t OP_CALL OpGetScreenData(op_handle handle, int x1, int y1, int x2, int 
     if (!handle)
         return 0;
 
+    handle->op.ResetLastError();
     try {
         size_t data = 0;
         long ret = 0;
@@ -815,6 +835,7 @@ int OP_CALL OpCopyScreenData(op_handle handle, int x1, int y1, int x2, int y2, i
     if (!handle || !dst)
         return 0;
 
+    handle->op.ResetLastError();
     try {
         long w = 0, h = 0, row = 0, need = 0, ret = 0;
         handle->op.CopyScreenData(x1, y1, x2, y2, mode, dst, dst_size, &w, &h, &row, &need, &ret);
@@ -824,6 +845,7 @@ int OP_CALL OpCopyScreenData(op_handle handle, int x1, int y1, int x2, int y2, i
         out_int(needed, need);
         return static_cast<int>(ret);
     } catch (...) {
+        handle->op.SetLastErrorCode(8); // internal
         return 0;
     }
 }
@@ -834,6 +856,7 @@ uintptr_t OP_CALL OpGetScreenDataBmp(op_handle handle, int x1, int y1, int x2, i
     if (!handle)
         return 0;
 
+    handle->op.ResetLastError();
     try {
         size_t data = 0;
         long data_size = 0;

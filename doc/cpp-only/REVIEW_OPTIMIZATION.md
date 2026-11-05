@@ -24,6 +24,8 @@
 | O24 | ◐ 部分处理 | DXGI staging 纹理复用 + 重建后 100ms 重试；GPU 子区域拷贝留待后续 |
 | O27 | ✅ 已处理 | 移除绑定前的无条件 UnBind（参数校验失败保留旧绑定）；`IsBind` 校验窗口是否仍存在 |
 | G4 | ✅ 已处理 | `OpCheckDependencies` 增加 gtest/minhook/directx-headers 检查；op_test 打开 `OpCheckGTest` |
+| O4 | ◐ 部分处理 | 新增 `OpGetLastErrorCode`（OK/INVALID_HANDLE/INVALID_ARG/NOT_BOUND/CAPTURE/IO/BACKEND/INTERNAL）；OCR 后端错误尚未细分 |
+| O18 | ◐ 部分处理 | 错误码覆盖无效 handle，但 handle magic/UAF 诊断未做 |
 
 > 尚未处理：O4/O5/O6/O11/O12/O14–O16/O18/O20–O23/O25/O26/O28–O30、E1–E8、G3/G5–G8。
 > 正文保留原始分析，作为后续批次清单。

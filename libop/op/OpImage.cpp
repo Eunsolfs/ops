@@ -42,7 +42,10 @@ void op::Op::Capture(long x1, long y1, long x2, long y2, const wchar_t *file_nam
     internal::set_result(ret, 0L);
 
     internal::with_captured_region(m_context.get(), x1, y1, x2, y2, [&]() {
-        internal::set_result(ret, m_context->image_proc.Capture(file_name));
+        const long capture_ret = m_context->image_proc.Capture(file_name);
+        if (capture_ret != 1)
+            internal::set_last_error(m_context.get(), internal::OpErrorCode::capture);
+        internal::set_result(ret, capture_ret);
     });
 }
 // 比较指定坐标点(x,y)的颜色
@@ -199,7 +202,10 @@ void op::Op::SetDisplayInput(const wchar_t *mode, long *ret) {
 }
 
 void op::Op::LoadPic(const wchar_t *file_name, long *ret) {
-    internal::set_result(ret, m_context->image_proc.LoadPic(file_name));
+    const long load_ret = m_context->image_proc.LoadPic(file_name);
+    if (load_ret <= 0)
+        internal::set_last_error(m_context.get(), internal::OpErrorCode::io);
+    internal::set_result(ret, load_ret);
 }
 
 void op::Op::FreePic(const wchar_t *file_name, long *ret) {
@@ -207,13 +213,19 @@ void op::Op::FreePic(const wchar_t *file_name, long *ret) {
 }
 
 void op::Op::LoadMemPic(const wchar_t *file_name, void *data, long size, long *ret) {
-    internal::set_result(ret, m_context->image_proc.LoadMemPic(file_name, data, size));
+    const long load_ret = m_context->image_proc.LoadMemPic(file_name, data, size);
+    if (load_ret != 1)
+        internal::set_last_error(m_context.get(), internal::OpErrorCode::io);
+    internal::set_result(ret, load_ret);
 }
 
 void op::Op::GetPicSize(const wchar_t *pic_name, long *width, long *height, long *ret) {
     internal::set_result(width, 0L);
     internal::set_result(height, 0L);
-    internal::set_result(ret, m_context->image_proc.GetPicSize(pic_name, width, height));
+    const long size_ret = m_context->image_proc.GetPicSize(pic_name, width, height);
+    if (size_ret != 1)
+        internal::set_last_error(m_context.get(), internal::OpErrorCode::io);
+    internal::set_result(ret, size_ret);
 }
 
 void op::Op::GetScreenData(long x1, long y1, long x2, long y2, size_t *data, long *ret) {
@@ -246,6 +258,7 @@ void op::Op::CopyScreenData(long x1, long y1, long x2, long y2, long mode, void 
 
     if (!dst) {
         setlog(L"CopyScreenData: dst is null");
+        internal::set_last_error(m_context.get(), internal::OpErrorCode::invalid_arg);
         return;
     }
 

@@ -174,3 +174,13 @@ op::internal::OpContext::OpContext(int client_id) : id(client_id) {
 
     opPath = RuntimeEnvironment::getBasePath();
 }
+
+namespace op::internal {
+
+void set_last_error(OpContext *context, OpErrorCode code) {
+    if (!context)
+        return;
+    context->last_error_code = static_cast<long>(code);
+}
+
+} // namespace op::internal

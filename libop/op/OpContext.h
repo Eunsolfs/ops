@@ -12,6 +12,19 @@
 
 namespace op::internal {
 
+// 分类错误码，数值与 include/op_c_api.h 的 op_error_code 一一对应。
+enum class OpErrorCode : long {
+    ok = 0,
+    invalid_handle = 1,
+    invalid_arg = 2,
+    not_bound = 3,
+    capture = 4,
+    not_found = 5,
+    io = 6,
+    backend = 7,
+    internal = 8,
+};
+
 // 进程级 DPI 感知配置。SetProcessDPIAware 是进程级、一次性的，必须在本进程
 // 第一次创建 OpContext 之前调用；创建过 Op 之后再设置不会生效。
 // 返回 false 表示已经创建过 Op（或已被其他组件锁定）。
@@ -41,7 +54,12 @@ struct OpContext {
     std::wstring opPath;
     long screen_data_mode = 0;
     int id = 0;
+    // 最近一次调用的分类错误码（0=成功）。由 C API 层在每次调用入口清零。
+    long last_error_code = 0;
 };
+
+// 记录分类错误码；只在失败路径调用。
+void set_last_error(OpContext *context, OpErrorCode code);
 
 } // namespace op::internal
 
