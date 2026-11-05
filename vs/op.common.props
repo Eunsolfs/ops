@@ -10,6 +10,11 @@
   -->
   <Import Project="$(MSBuildThisFileDirectory)op.deps.props" />
 
+  <PropertyGroup Label="OpQualityGates">
+    <!-- 默认不升级告警；CI/发布可用 /p:OpWarningsAsErrors=true 强制执行“0 警告”。 -->
+    <OpWarningsAsErrors Condition="'$(OpWarningsAsErrors)' == ''">false</OpWarningsAsErrors>
+  </PropertyGroup>
+
   <PropertyGroup Label="OpDirs">
     <!-- Debug 与 Release 分开输出，避免同名 op_x64/libop.lib 互相覆盖：
          Debug 的 bin/x64/Debug、lib/x64/Debug；Release 仍是 Twinkle 使用的 bin/x64、lib/x64。 -->
@@ -42,7 +47,8 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <TreatWarningAsError>false</TreatWarningAsError>
+      <!-- 默认只报告；CI 可传 /p:OpWarningsAsErrors=true 把告警升级为错误（G2）。 -->
+      <TreatWarningAsError>$(OpWarningsAsErrors)</TreatWarningAsError>
       <SDLCheck>false</SDLCheck>
       <ConformanceMode>false</ConformanceMode>
       <MinimalRebuild>false</MinimalRebuild>
@@ -89,10 +95,11 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <DebugInformationFormat>None</DebugInformationFormat>
+      <!-- Release 也生成 PDB（/Zi + /DEBUG），PDB 单独随包发布，便于线上崩溃符号化（O10）。 -->
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>

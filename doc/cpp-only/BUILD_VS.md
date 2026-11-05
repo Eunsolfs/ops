@@ -269,3 +269,24 @@ op_handle h = OpCreate();
 - `swig/`、`python/`、`bindings/`、`pyproject.toml`、`scripts/build_wheel.ps1` 等
 
 旧 CMake 构建链如需回退，可从 `master` 分支取。
+
+## 10. 一键构建 / 测试 / 门禁（2026-11-05）
+
+新增脚本（不再依赖文档里写死的本机路径，用 `vswhere` 自动定位 MSBuild）：
+
+```powershell
+pwsh scripts/build.ps1                          # Release x64，op.sln
+pwsh scripts/build.ps1 -Platform Win32 -Configuration Debug
+pwsh scripts/build.ps1 -Target test -WarningsAsErrors   # 只构建 op_test，告警即错误
+pwsh scripts/test.ps1                           # core 集（不依赖 OCR/WGC/真实桌面）
+pwsh scripts/test.ps1 -Scope all                # 完整套件（需 OCR 服务与交互桌面）
+pwsh scripts/verify.ps1                         # 四配置构建 + x64/x86 core 测试
+```
+
+说明：
+
+- `build.ps1` 默认传 `/p:OpSyncTwinkle=false`，不会覆盖 Twinkle 的 `lib/`；需要同步时加 `-SyncTwinkle`。
+- 本机 tlog 偶发被索引器/安全软件占用（`MSB6003 ... .tlog 正由另一进程使用`）时，加
+  `-NoTrackFileAccess`（`verify.ps1` 默认已带）绕过；代价是该次增量构建失效。
+- Release 现在也产出 PDB（`/Zi + /DEBUG`）；发布时把 PDB 与 DLL 一起归档。
+- CI workflow 目前仍未恢复（`.github/workflows/` 为空）；`verify.ps1` 可作为流水线主体。

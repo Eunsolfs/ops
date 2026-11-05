@@ -20,7 +20,7 @@ HKCR
 				val ThreadingModel = s 'Apartment'
 			}
 			TypeLib = s '{40297cce-e4de-4d31-acfb-81bb8d14d261}'
-			Version = s '1.0'
+			Version = s '1.1'
 		}
 	}
 }

@@ -17,9 +17,18 @@ using op::ocr::HttpOcrService;
 
 namespace {
 // 普通找图模板缓存。放在进程级别，多个 Op 实例共享同一份已解码图片和预处理模板。
-// 匹配时会复制 shared_ptr 快照；FreePic 只移除缓存入口，不会提前释放正在匹配的图片。
-std::map<wstring, std::shared_ptr<Image>> g_pic_cache;
-std::map<wstring, std::shared_ptr<PicMatchTemplate>> g_pic_match_cache;
+// 缓存项记录文件 (mtime,size)：同名文件被覆盖后自动失效（Twinkle 图色库会原地更新 PNG）。
+// 显式 LoadPic/LoadMemPic 标记 explicit_load；EnablePicCache(0) 只影响 FindPic 的自动缓存。
+struct PicCacheEntry {
+    std::shared_ptr<Image> image;
+    std::shared_ptr<PicMatchTemplate> match;
+    bool explicit_load = false;
+    bool has_file_stamp = false;
+    unsigned long long file_size = 0;
+    FILETIME file_mtime{};
+};
+
+std::map<wstring, PicCacheEntry> g_pic_cache;
 std::shared_mutex g_pic_cache_mutex;
 
 template <typename Target, typename Value> bool set_out(Target *target, Value value) {
@@ -50,40 +59,81 @@ std::shared_ptr<PicMatchTemplate> make_pic_match(std::shared_ptr<Image> image) {
     return match;
 }
 
-bool find_cached_pic(const wstring &key, std::shared_ptr<Image> &image, std::shared_ptr<PicMatchTemplate> &match) {
+// 读取文件时间戳/大小；文件不存在返回 false。
+bool query_file_stamp(const wstring &path, unsigned long long &size, FILETIME &mtime) {
+    WIN32_FILE_ATTRIBUTE_DATA data{};
+    if (!::GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &data))
+        return false;
+    size = (static_cast<unsigned long long>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
+    mtime = data.ftLastWriteTime;
+    return true;
+}
+
+bool same_stamp(const PicCacheEntry &entry, unsigned long long size, const FILETIME &mtime) {
+    return entry.file_size == size && entry.file_mtime.dwLowDateTime == mtime.dwLowDateTime &&
+           entry.file_mtime.dwHighDateTime == mtime.dwHighDateTime;
+}
+
+// allow_auto=false 时忽略 FindPic 自动缓存（EnablePicCache(0)），显式 LoadPic 仍可用。
+bool find_cached_pic(const wstring &key, std::shared_ptr<Image> &image, std::shared_ptr<PicMatchTemplate> &match,
+                     bool allow_auto = true) {
     std::shared_lock<std::shared_mutex> lock(g_pic_cache_mutex);
     auto it = g_pic_cache.find(key);
     if (it == g_pic_cache.end())
         return false;
 
-    auto match_it = g_pic_match_cache.find(key);
-    if (match_it == g_pic_match_cache.end())
+    const PicCacheEntry &entry = it->second;
+    if (!entry.image || !entry.match)
         return false;
-
-    image = it->second;
-    match = match_it->second;
-    return image && match;
-}
-
-bool store_cached_pic(const wstring &key, std::shared_ptr<Image> image, std::shared_ptr<PicMatchTemplate> match) {
-    if (key.empty() || !image || image->empty() || !match)
+    if (!entry.explicit_load && !allow_auto)
         return false;
+    if (entry.has_file_stamp) {
+        unsigned long long size = 0;
+        FILETIME mtime{};
+        // 文件被覆盖/删除时视为未命中，下一轮按新文件重建。
+        if (!query_file_stamp(key, size, mtime) || !same_stamp(entry, size, mtime))
+            return false;
+    }
 
-    std::unique_lock<std::shared_mutex> lock(g_pic_cache_mutex);
-    g_pic_cache[key] = std::move(image);
-    g_pic_match_cache[key] = std::move(match);
+    image = entry.image;
+    match = entry.match;
     return true;
 }
 
-bool store_cached_pic(const wstring &key, std::shared_ptr<Image> image) {
-    return store_cached_pic(key, image, make_pic_match(image));
+bool store_cached_pic(const wstring &key, std::shared_ptr<Image> image, std::shared_ptr<PicMatchTemplate> match,
+                      bool explicit_load, const wstring *file_path) {
+    if (key.empty() || !image || image->empty() || !match)
+        return false;
+
+    PicCacheEntry entry;
+    entry.explicit_load = explicit_load;
+    if (file_path) {
+        unsigned long long size = 0;
+        FILETIME mtime{};
+        if (query_file_stamp(*file_path, size, mtime)) {
+            entry.has_file_stamp = true;
+            entry.file_size = size;
+            entry.file_mtime = mtime;
+        }
+    }
+    entry.image = std::move(image);
+    entry.match = std::move(match);
+
+    std::unique_lock<std::shared_mutex> lock(g_pic_cache_mutex);
+    g_pic_cache[key] = std::move(entry);
+    return true;
+}
+
+bool store_cached_pic(const wstring &key, std::shared_ptr<Image> image, bool explicit_load, const wstring *file_path) {
+    auto match = make_pic_match(image);
+    if (!match)
+        return false;
+    return store_cached_pic(key, std::move(image), std::move(match), explicit_load, file_path);
 }
 
 bool erase_cached_pic(const wstring &key) {
     std::unique_lock<std::shared_mutex> lock(g_pic_cache_mutex);
-    const bool erased_image = g_pic_cache.erase(key) > 0;
-    const bool erased_match = g_pic_match_cache.erase(key) > 0;
-    return erased_image || erased_match;
+    return g_pic_cache.erase(key) > 0;
 }
 
 std::shared_ptr<Image> read_pic_file(const wstring &path) {
@@ -195,8 +245,8 @@ long ImageSearchService::FindPic(const std::wstring &files, const wstring &delta
     files2mats(files, vmatches, vpic_name, holders, match_holders);
     dfcolor.str2color(delta_colors);
     sim = 0.5 + sim / 2;
-    // 不用 FindPicTh：该构建下线程池路径在 MuMu 子窗口/服务进程里恒返回 -1，
-    // 非线程版 FindPic 同参数可命中（OP 官方测试工具也是这样）。
+    // 线程版 FindPicTh/FindPicExTh 已整体移除：该路径在 MuMu 子窗口/服务进程里恒返回 -1，
+    // 且每个 Op 实例会预建 hardware_concurrency() 个空闲线程（见 REVIEW_OPTIMIZATION.md O1）。
     long ret = ImageSearchAlgorithms::FindPic(vmatches, dfcolor, sim, dir, x, y);
     return ret;
 }
@@ -340,7 +390,7 @@ long ImageSearchService::LoadPic(const wstring &files) {
         if (!image)
             continue;
 
-        store_cached_pic(tp, std::move(image));
+        store_cached_pic(tp, std::move(image), /*explicit_load=*/true, &tp);
         loaded++;
     }
     return loaded;
@@ -376,7 +426,7 @@ long ImageSearchService::LoadMemPic(const wstring &file_name, void *data, long s
             return 0;
 
         // 同名内存图按新内容覆盖，避免全局缓存复用到旧模板。
-        return store_cached_pic(file_name, std::move(image)) ? 1 : 0;
+        return store_cached_pic(file_name, std::move(image), /*explicit_load=*/true, nullptr) ? 1 : 0;
     } catch (...) {
         return 0;
     }
@@ -388,11 +438,11 @@ long ImageSearchService::GetPicSize(const wstring &file_name, long *width, long 
 
     std::shared_ptr<Image> image;
     std::shared_ptr<PicMatchTemplate> match;
-    find_cached_pic(file_name, image, match);
+    find_cached_pic(file_name, image, match, _enable_cache != 0);
     if (!image) {
         wstring tp;
         if (Path2GlobalPath(file_name, _curr_path, tp))
-            find_cached_pic(tp, image, match);
+            find_cached_pic(tp, image, match, _enable_cache != 0);
     }
 
     if (image) {
@@ -400,7 +450,17 @@ long ImageSearchService::GetPicSize(const wstring &file_name, long *width, long 
             return 0;
         return 1;
     }
-    return 0;
+
+    // 缓存未命中时按文件读尺寸（只解析文件头，不驻留缓存），与 FindPic 语义对齐。
+    wstring tp;
+    if (!Path2GlobalPath(file_name, _curr_path, tp))
+        return 0;
+    auto disk = read_pic_file(tp);
+    if (!disk)
+        return 0;
+    if (!set_out(width, disk->width) || !set_out(height, disk->height))
+        return 0;
+    return 1;
 }
 
 // FindColorBlock/FindColorBlockEx/FindLine 共用的二值化入口：按颜色描述生成二值图，
@@ -435,11 +495,11 @@ void ImageSearchService::files2mats(const wstring &files, std::vector<PicMatchTe
         // 先按原始名字查找，覆盖 LoadMemPic 名称和完整路径两种情况。
         std::shared_ptr<Image> image;
         std::shared_ptr<PicMatchTemplate> match;
-        find_cached_pic(it, image, match);
+        find_cached_pic(it, image, match, _enable_cache != 0);
         if (!image) {
             if (!Path2GlobalPath(it, _curr_path, tp))
                 continue;
-            find_cached_pic(tp, image, match);
+            find_cached_pic(tp, image, match, _enable_cache != 0);
             if (!image) {
                 image = read_pic_file(tp);
                 if (!image)
@@ -449,7 +509,7 @@ void ImageSearchService::files2mats(const wstring &files, std::vector<PicMatchTe
                     continue;
                 // 自动读取本地文件时，只有开启缓存才写入全局缓存。
                 if (_enable_cache)
-                    store_cached_pic(tp, image, match);
+                    store_cached_pic(tp, image, match, /*explicit_load=*/false, &tp);
             }
         }
 

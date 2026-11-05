@@ -806,6 +806,28 @@ uintptr_t OP_CALL OpGetScreenData(op_handle handle, int x1, int y1, int x2, int 
     }
 }
 
+int OP_CALL OpCopyScreenData(op_handle handle, int x1, int y1, int x2, int y2, int mode, void *dst, int dst_size,
+                             int *width, int *height, int *stride, int *needed) {
+    out_int(width, 0);
+    out_int(height, 0);
+    out_int(stride, 0);
+    out_int(needed, 0);
+    if (!handle || !dst)
+        return 0;
+
+    try {
+        long w = 0, h = 0, row = 0, need = 0, ret = 0;
+        handle->op.CopyScreenData(x1, y1, x2, y2, mode, dst, dst_size, &w, &h, &row, &need, &ret);
+        out_int(width, w);
+        out_int(height, h);
+        out_int(stride, row);
+        out_int(needed, need);
+        return static_cast<int>(ret);
+    } catch (...) {
+        return 0;
+    }
+}
+
 uintptr_t OP_CALL OpGetScreenDataBmp(op_handle handle, int x1, int y1, int x2, int y2, int *size, int *out_ret) {
     out_int(size, 0);
     out_int(out_ret, 0);

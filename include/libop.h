@@ -356,6 +356,8 @@ class OP_API Op {
     void FindMultiColorEx(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *first_color,
                           _In_ const wchar_t *offset_color, _In_ double sim, _In_ long dir, _Out_ std::wstring &retstr);
     // 查找指定区域内的图片
+    // 注意 delta_color：仅在模板被判定为“透明图”（四角同色）时生效，作为背景色容差；
+    // 非透明模板的匹配严格走灰度相似度，delta_color 会被忽略（见 REVIEW_OPTIMIZATION.md O19）。
     void FindPic(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ const wchar_t *files,
                  _In_ const wchar_t *delta_color, _In_ double sim, _In_ long dir, _Out_ long *x, _Out_ long *y,
                  _Out_ long *ret);
@@ -388,6 +390,13 @@ class OP_API Op {
     void GetPicSize(_In_ const wchar_t *pic_name, _Out_ long *width, _Out_ long *height, _Out_ long *ret);
     //
     void GetScreenData(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _Out_ size_t *data, _Out_ long *ret);
+    // 拷贝当前帧 BGRA 像素到调用方缓冲，避免 GetScreenData 的进程内指针在下次调用后失效。
+    // mode 与 SetScreenDataMode 一致：0=原序（自顶向下），1=上下翻转。
+    // ret：1=成功；0=失败/无帧；-2=容量不足，此时 *needed 给出所需字节数。
+    // 成功时 width/height 为图像尺寸，stride 为行跨度（字节，= width*4）。
+    void CopyScreenData(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _In_ long mode, _In_ void *dst,
+                        _In_ long dst_size, _Out_ long *width, _Out_ long *height, _Out_ long *stride,
+                        _Out_ long *needed, _Out_ long *ret);
     //
     void GetScreenDataBmp(_In_ long x1, _In_ long y1, _In_ long x2, _In_ long y2, _Out_ size_t *data, _Out_ long *size,
                           _Out_ long *ret);

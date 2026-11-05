@@ -23,7 +23,7 @@ std::wstring module_file_name(HINSTANCE instance) {
 void *RuntimeEnvironment::m_instance = nullptr;
 std::wstring RuntimeEnvironment::m_basePath;
 std::wstring RuntimeEnvironment::m_opName;
-int RuntimeEnvironment::m_showErrorMsg = 1;
+std::atomic<int> RuntimeEnvironment::m_showErrorMsg{0};
 void RuntimeEnvironment::setInstance(void *instance) {
     m_instance = instance;
     std::wstring s = module_file_name(static_cast<HINSTANCE>(m_instance));

@@ -690,3 +690,41 @@ TEST(ImageColorTest, SetDisplayInputMemBareRawPointerFailsWithoutChangingCurrent
     op.GetColor(1, 1, color);
     EXPECT_EQ(color, L"030201") << "Failed mem mode parsing should not clobber the previous display input";
 }
+
+TEST(ImageColorTest, CopyScreenDataMatchesMemInput) {
+    op::Op op;
+    long ret = 0;
+    const int width = 32;
+    const int height = 32;
+    vector<uchar> pixels(static_cast<size_t>(width) * height * 4, 0xff);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            auto idx = static_cast<size_t>(y * width + x) * 4;
+            pixels[idx + 0] = static_cast<uchar>(x);
+            pixels[idx + 1] = static_cast<uchar>(y);
+            pixels[idx + 2] = 0x7f;
+            pixels[idx + 3] = 0xff;
+        }
+    }
+    auto bmp = BuildBmp32TopDown(width, height, pixels);
+    wstring mode = L"mem:" + PtrToWString(bmp.data());
+    op.SetDisplayInput(mode.c_str(), &ret);
+    ASSERT_EQ(ret, 1);
+
+    std::vector<uchar> copied(pixels.size(), 0);
+    long out_width = 0, out_height = 0, stride = 0, needed = 0;
+    op.CopyScreenData(0, 0, width, height, 0, copied.data(), static_cast<long>(copied.size()), &out_width,
+                      &out_height, &stride, &needed, &ret);
+    ASSERT_EQ(ret, 1);
+    EXPECT_EQ(out_width, width);
+    EXPECT_EQ(out_height, height);
+    EXPECT_EQ(stride, width * 4);
+    EXPECT_EQ(needed, static_cast<long>(pixels.size()));
+    EXPECT_EQ(copied, pixels);
+
+    // 容量不足：返回 -2 并给出所需字节数。
+    ret = 0;
+    op.CopyScreenData(0, 0, width, height, 0, copied.data(), 16, &out_width, &out_height, &stride, &needed, &ret);
+    EXPECT_EQ(ret, -2);
+    EXPECT_EQ(needed, static_cast<long>(pixels.size()));
+}

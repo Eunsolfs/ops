@@ -2,6 +2,7 @@
 
 #include "../libop/base/ThreadPool.h"
 #include "../libop/base/Utils.h"
+#include "../libop/image/Image.h"
 #include "../libop/image/ImageSearchAlgorithms.h"
 #include "../include/op_c_api.h"
 #include "op_i.h"
@@ -203,4 +204,62 @@ TEST(UtilsTest, RectDivideBlock) {
     vector<op::rect_t> blocks;
     rc.divideBlock(2, false, blocks);
     EXPECT_EQ(blocks.size(), 2u);
+}
+
+TEST(UtilsTest, SetPathNormalizesRelativePath) {
+    op::Op op;
+    long ret = 0;
+    op.SetPath(L".", &ret);
+    ASSERT_EQ(ret, 1L);
+
+    std::wstring path;
+    op.GetPath(path);
+    ASSERT_FALSE(path.empty());
+    EXPECT_TRUE(path.size() > 2 && path[1] == L':');
+
+    // 连续相对路径不应叠加成 a\..\.. 之类的相对串。
+    op.SetPath(L"..", &ret);
+    ASSERT_EQ(ret, 1L);
+    op.GetPath(path);
+    EXPECT_EQ(path.find(L".."), std::wstring::npos);
+}
+
+TEST(UtilsTest, PicCacheRefreshesAfterFileOverwrite) {
+    wchar_t temp[MAX_PATH] = {0};
+    ASSERT_NE(::GetTempPathW(MAX_PATH, temp), 0u);
+    const std::wstring dir = std::wstring(temp) + L"op_cache_test_" + std::to_wstring(::GetCurrentProcessId());
+    ::CreateDirectoryW(dir.c_str(), nullptr);
+    const std::wstring file = dir + L"\\tile.bmp";
+
+    op::Image img;
+    img.create(4, 4);
+    ASSERT_TRUE(img.write(file.c_str()));
+
+    op::Op op;
+    long ret = 0;
+    op.SetPath(dir.c_str(), &ret);
+    ASSERT_EQ(ret, 1L);
+
+    op.LoadPic(L"tile.bmp", &ret);
+    EXPECT_EQ(ret, 1L);
+
+    long width = 0, height = 0;
+    op.GetPicSize(L"tile.bmp", &width, &height, &ret);
+    EXPECT_EQ(ret, 1L);
+    EXPECT_EQ(width, 4L);
+    EXPECT_EQ(height, 4L);
+
+    // 同名文件被覆盖后，缓存必须按 mtime/size 失效，不能继续返回旧尺寸。
+    ::DeleteFileW(file.c_str());
+    op::Image replaced;
+    replaced.create(8, 6);
+    ASSERT_TRUE(replaced.write(file.c_str()));
+
+    op.GetPicSize(L"tile.bmp", &width, &height, &ret);
+    EXPECT_EQ(ret, 1L);
+    EXPECT_EQ(width, 8L);
+    EXPECT_EQ(height, 6L);
+
+    ::DeleteFileW(file.c_str());
+    ::RemoveDirectoryW(dir.c_str());
 }

@@ -5,6 +5,25 @@
 - 范围：优先 Twinkle 实际使用的 C API 路径（采集 / 输入 / 找图找色 / OCR / 内存），其次构建、测试与分发。
 - 与前几份审计的关系：[AUDIT_SUMMARY.md](AUDIT_SUMMARY.md) 回答“削减后有没有坏”；本文件回答“现在还能更好、更全吗”，不重复已修项。
 
+## 处理状态（2026-11-05 第 1 批）
+
+| 项 | 状态 | 落地方式 |
+| --- | --- | --- |
+| O1 | ✅ 已处理 | 删除 `FindPicTh`/`FindPicExTh` 与 `m_threadPool`（线程路径全仓无调用） |
+| O2 | ✅ 已处理 | 缓存项记录 `mtime+size` 并自动失效；`EnablePicCache(0)` 跳过自动缓存读取；`GetPicSize` 未命中读盘 |
+| O3 | ✅ 已处理 | 日志默认 `0`（静默）+ `atomic<int>`；回调 API 留给错误体系批次 |
+| O7 | ✅ 已处理 | `SetPath` 用 `GetFullPathNameW` 归一化为绝对路径 |
+| O10 | ✅ 已处理 | Release 开启 `/Zi + /DEBUG`，产出 PDB |
+| O13 | ✅ 已处理 | 新增 `OpCopyScreenData`（C++/C API/x86 def/头注释） |
+| O17 | ✅ 已处理 | `OpAutomation.rgs` 的 TypeLib `Version` 改为 1.1 |
+| O19 | ✅ 已文档化 | 行为保持不变，`delta_color` 仅透明模板生效写入头文件与代码注释 |
+| G1 | ✅ 已处理 | 新增 `scripts/build.ps1`、`test.ps1`、`verify.ps1`（vswhere 定位 MSBuild） |
+| G2 | ✅ 已处理 | 新增 `OpWarningsAsErrors` 开关（默认 false，CI/verify 可打开） |
+
+> 其余项（O4/O5/O6/O8/O9/O11/O12/O14–O16/O18/O20–O30、E1–E8、G3–G8）尚未处理，
+> 正文保留原始分析，作为后续批次清单。
+
+
 ---
 
 ## 0. 结论

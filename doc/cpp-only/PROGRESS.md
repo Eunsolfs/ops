@@ -393,3 +393,37 @@ OpenCV   = 5.0.0
   7. 工程化缺口：无 CI（workflows 为空目录）、无一键构建脚本、无 PDB/打包、测试资产不入库、
      “0 警告”无机制保证。
 - 未改动任何源码；各项的落地顺序与验证方式见 `REVIEW_OPTIMIZATION.md` §4/§5。
+
+### 17:35 优化第 1 批（O1/O2/O3/O7/O10/O13/O17/O19 + G1/G2）
+
+- 处理 `REVIEW_OPTIMIZATION.md` 中低成本、低风险的一批：
+  - O1：删除 `FindPicTh`/`FindPicExTh` 与 `ImageSearchAlgorithms` 的线程池成员（全仓无调用；
+    之前每个 `Op` 句柄会预建 `hardware_concurrency()` 个空闲线程）。
+  - O2：模板缓存项记录文件 `(mtime,size)` 并自动失效；`EnablePicCache(0)` 跳过自动缓存读取；
+    `GetPicSize` 缓存未命中时读文件尺寸。修复“覆盖同名 PNG 后仍匹配旧模板”。
+  - O3：日志默认从 `MessageBoxA` 改为静默（`0`），开关改为 `std::atomic<int>`。
+  - O7：`OpSetPath` 用 `GetFullPathNameW` 归一化绝对路径，`OpGetPath` 返回绝对路径。
+  - O10：Release 开启 `/Zi + /DEBUG`，产出 PDB（优化选项不变）。
+  - O13：新增 `OpCopyScreenData`（C++ / C API / x86 def），拷贝当前帧到调用方缓冲，
+    返回 `1/0/-2`（容量不足给 `needed`）；旧 `OpGetScreenData` 保留。
+  - O17：`OpAutomation.rgs` 的 TypeLib `Version` 改为 `1.1`，与 `op.idl` / `IDispatchImpl` 对齐。
+  - O19：`delta_color` 仅透明模板生效——行为不变，写入头文件/代码注释。
+  - G1：新增 `scripts/build.ps1`、`scripts/test.ps1`、`scripts/verify.ps1`（vswhere 定位 MSBuild）。
+  - G2：`vs/op.common.props` 新增 `OpWarningsAsErrors` 开关（默认 false）。
+
+- 新增测试：
+  - `UtilsTest.SetPathNormalizesRelativePath`
+  - `UtilsTest.PicCacheRefreshesAfterFileOverwrite`
+  - `ImageColorTest.CopyScreenDataMatchesMemInput`（含容量不足 `-2` 分支）
+
+- 验证：
+  - `pwsh scripts/verify.ps1`：Release/Debug × x64/Win32 四配置全部构建通过，0 warning / 0 error。
+  - `pwsh scripts/test.ps1 -Platform x64`：67 ran / **62 PASSED** / 5 SKIPPED（缺真实图资产）。
+  - `pwsh scripts/test.ps1 -Platform Win32`：66 ran / **60 PASSED** / 6 SKIPPED。
+  - `dumpbin /exports bin/x64/op_c_api_x64.dll`：`OpCopyScreenData` 存在；
+    `bin/x86/op_c_api_x86.dll`：`_OpCopyScreenData@48` 与 `OpCopyScreenData` 别名均存在。
+  - `tools/cpp_call.exe` 冒烟与既有 COM 用例未回归。
+
+- 环境备注：本轮中途 `build/_deps` 被外部进程清空，已用
+  `pwsh scripts/bootstrap-deps.ps1 -Arch both` 重建 BlackBone + OpenCV；本机 tlog 偶发被占用，
+  构建时用 `-NoTrackFileAccess`（`verify.ps1` 默认带）。

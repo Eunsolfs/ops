@@ -241,3 +241,39 @@ OP_C_API int OP_CALL OpGetProcessDpiAware(void);
   - 未修饰别名 `OpCreate`、`OpOcr`（由 `libop/c_api/op_c_api_x86.def` 提供，供 `GetProcAddress` 使用）。
 - 两种写法都可用；`op_test` 的 `UtilsTest.X86CapiUndecoratedAliases` 已验证。
 - x86 导出总数因此从 200 变为 400（200 修饰 + 200 别名）；x64 仍为 200。
+
+## 7. 2026-11-05 优化批次（行为变更与新增）
+
+来源：[REVIEW_OPTIMIZATION.md](REVIEW_OPTIMIZATION.md) 第 1 批。全部为**向后兼容的新增/修正**，
+调用方无需改代码即可继续使用；下列行为变化需要知情：
+
+### 7.1 新增
+
+- **`OpCopyScreenData`（C API）/ `op::Op::CopyScreenData`（C++）**：
+  把当前帧 BGRA 拷贝到调用方缓冲，返回 `1=成功 / 0=失败 / -2=容量不足`，成功时给出
+  `width/height/stride(=width*4)`，`mode` 与 `OpSetScreenDataMode` 一致（0=原序，1=上下翻转）。
+  推荐替代 `OpGetScreenData`（后者返回 handle 内部指针，下次调用即失效）。
+  x86 同时导出 `_OpCopyScreenData@48` 与 `OpCopyScreenData` 别名。
+
+### 7.2 行为变化
+
+- **日志默认静默**：`RuntimeEnvironment::m_showErrorMsg` 默认值从 `1`（弹 `MessageBoxA`）改为
+  `0`（静默）。无头宿主不会再被内部错误弹窗卡死；需要提示时显式调用
+  `OpSetShowErrorMsg(handle, 1|2|3)`。该开关是**进程级**（所有句柄共享），已改为 atomic。
+- **`OpSetPath` 返回绝对路径**：内部用 `GetFullPathNameW` 规范化并去掉尾部分隔符；
+  `OpGetPath` 返回的也是绝对路径。相对路径仍按当前资源目录解析（旧行为保留）。
+  这修复了连续相对 `SetPath` 会叠加的问题（`REVIEW_OPTIMIZATION.md` O7）。
+- **模板缓存按文件 `mtime+size` 失效**：同名图片被覆盖后，`FindPic`/`OpGetPicSize` 会重新读盘，
+  不再沿用旧模板（O2）。`OpEnablePicCache(0)` 现在同时跳过**自动缓存读取**；
+  `OpLoadPic`/`OpLoadMemPic` 的显式条目仍可使用。
+- **`OpGetPicSize` 缓存未命中时读文件**：只解析图片尺寸，不驻留缓存；与 `FindPic` 语义对齐。
+- **Release 生成 PDB**：`/Zi + /DEBUG`，优化选项不变。PDB 位于 `lib/<arch>/` 与中间目录，
+  发布时建议单独归档（不入安装包）。
+- **COM 注册脚本 TypeLib 版本改为 1.1**：与 `op.idl` 的 `version(1.1)`、`IDispatchImpl` 1,1 对齐。
+
+### 7.3 文档澄清（行为未变）
+
+- `FindPic` 的 `delta_color` 只对“透明模板”（四角同色判定）生效；非透明模板走灰度相似度，
+  该参数被忽略。已在 `include/libop.h` 注明（O19）。
+- `OpGetLastError` 返回 `::GetLastError()` 的值，不是库内分类错误码；失败时可能是 0 或残留值。
+  已在 `include/op_c_api.h` 注明（O4）。

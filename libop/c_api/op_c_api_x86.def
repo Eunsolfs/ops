@@ -195,6 +195,8 @@ EXPORTS
     OpGetProcessDpiAware=_OpGetProcessDpiAware@0
     _OpGetProcessInfo@8
     OpGetProcessInfo=_OpGetProcessInfo@8
+    _OpCopyScreenData@48
+    OpCopyScreenData=_OpCopyScreenData@48
     _OpGetScreenData@24
     OpGetScreenData=_OpGetScreenData@24
     _OpGetScreenDataBmp@28

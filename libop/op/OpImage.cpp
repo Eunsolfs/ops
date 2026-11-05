@@ -236,6 +236,46 @@ void op::Op::GetScreenData(long x1, long y1, long x2, long y2, size_t *data, lon
     });
 }
 
+void op::Op::CopyScreenData(long x1, long y1, long x2, long y2, long mode, void *dst, long dst_size, long *width,
+                            long *height, long *stride, long *needed, long *ret) {
+    internal::set_result(width, 0L);
+    internal::set_result(height, 0L);
+    internal::set_result(stride, 0L);
+    internal::set_result(needed, 0L);
+    internal::set_result(ret, 0L);
+
+    if (!dst) {
+        setlog(L"CopyScreenData: dst is null");
+        return;
+    }
+
+    auto &img = m_context->image_proc._src;
+    internal::with_captured_region(m_context.get(), x1, y1, x2, y2, [&]() {
+        const long row_bytes = static_cast<long>(img.width) * 4;
+        const long total = row_bytes * static_cast<long>(img.height);
+        internal::set_result(width, static_cast<long>(img.width));
+        internal::set_result(height, static_cast<long>(img.height));
+        internal::set_result(stride, row_bytes);
+        internal::set_result(needed, total);
+
+        if (dst_size < total) {
+            internal::set_result(ret, -2L);
+            return;
+        }
+
+        auto *out = static_cast<unsigned char *>(dst);
+        if (mode == SC_DATA_BOTTOM) {
+            for (int i = 0; i < img.height; ++i) {
+                memcpy(out + static_cast<size_t>(i) * row_bytes, img.ptr<char>(img.height - 1 - i),
+                       static_cast<size_t>(row_bytes));
+            }
+        } else {
+            memcpy(out, img.pdata, static_cast<size_t>(total));
+        }
+        internal::set_result(ret, 1L);
+    });
+}
+
 void op::Op::GetScreenDataBmp(long x1, long y1, long x2, long y2, size_t *data, long *size, long *ret) {
     internal::set_result(data, 0);
     internal::set_result(size, 0L);

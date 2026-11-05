@@ -8,7 +8,6 @@
 #include "../base/Types.h"
 #include "../image/Color.h"
 #include "../image/Image.h"
-#include "../base/ThreadPool.h"
 #include <algorithm>
 #include <string>
 #include <vector>
@@ -139,17 +138,9 @@ class ImageSearchAlgorithms {
 
     long FindPic(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir, long &x, long &y);
 
-    long FindPicTh(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, long &x, long &y);
-
-    long FindPicTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir, long &x, long &y);
-
     long FindPicEx(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, vpoint_desc_t &vpd);
 
     long FindPicEx(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir, vpoint_desc_t &vpd);
-
-    long FindPicExTh(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, vpoint_desc_t &vpd);
-
-    long FindPicExTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir, vpoint_desc_t &vpd);
 
     long FindColorBlock(long count, long height, long width, long &x, long &y);
 
@@ -210,8 +201,6 @@ class ImageSearchAlgorithms {
     // 偏移
     int _dx, _dy;
 
-  private:
-    ThreadPool m_threadPool;
 };
 
 } // namespace op::image

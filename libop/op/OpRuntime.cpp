@@ -20,30 +20,60 @@ bool op::Op::IsProcessDpiAware() {
     return internal::process_dpi_aware_actual();
 }
 
+namespace {
+// Windows 分隔符；用常量避免转义歧义。
+const wchar_t kBackslash = static_cast<wchar_t>(0x5C);
+// 统一转成绝对路径，避免相对路径在换工作目录或多次 SetPath 后叠加。
+std::wstring absolute_path(const std::wstring &path) {
+    const DWORD needed = ::GetFullPathNameW(path.c_str(), 0, nullptr, nullptr);
+    if (needed == 0)
+        return path;
+
+    std::wstring out(needed, L'\0');
+    const DWORD len = ::GetFullPathNameW(path.c_str(), needed, out.data(), nullptr);
+    if (len == 0 || len >= needed)
+        return path;
+
+    out.resize(len);
+    // 去掉尾部分隔符（保留 "C:\" 这种根路径）。
+    while (out.size() > 3 && (out.back() == kBackslash || out.back() == L'/'))
+        out.pop_back();
+    return out;
+}
+} // namespace
+
 void op::Op::SetPath(const wchar_t *path, long *ret) {
+    if (!path) {
+        setlog(L"SetPath: path is null");
+        internal::set_result(ret, 0L);
+        return;
+    }
+
     std::wstring fpath = path;
     replacew(fpath, L"/", L"\\");
-    if (fpath.find(L'\\') != std::wstring::npos && ::PathFileExistsW(fpath.data())) {
-        m_context->curr_path = fpath;
-        m_context->image_proc._curr_path = m_context->curr_path;
-        m_context->bkproc._curr_path = m_context->curr_path;
-        internal::set_result(ret, 1L);
-    } else {
 
-        if (!fpath.empty() && fpath[0] != L'\\')
-            fpath = m_context->curr_path + L'\\' + fpath;
+    std::wstring resolved;
+    if (::PathFileExistsW(fpath.data())) {
+        resolved = fpath;
+    } else {
+        // 相对路径按当前资源目录解析，保持旧行为。
+        if (!fpath.empty() && fpath[0] != kBackslash)
+            fpath = m_context->curr_path + L"\\" + fpath;
         else
             fpath = m_context->curr_path + fpath;
-        if (::PathFileExistsW(fpath.data())) {
-            m_context->curr_path = path;
-            m_context->image_proc._curr_path = m_context->curr_path;
-            m_context->bkproc._curr_path = m_context->curr_path;
-            internal::set_result(ret, 1L);
-        } else {
+
+        if (!::PathFileExistsW(fpath.data())) {
             setlog("path '%s' not exists", fpath.data());
             internal::set_result(ret, 0L);
+            return;
         }
+        resolved = fpath;
     }
+
+    m_context->curr_path = absolute_path(resolved);
+    m_context->image_proc._curr_path = m_context->curr_path;
+    m_context->bkproc._curr_path = m_context->curr_path;
+    internal::set_result(ret, 1L);
 }
 
 void op::Op::GetPath(std::wstring &path) {

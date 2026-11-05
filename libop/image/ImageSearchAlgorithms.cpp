@@ -115,18 +115,6 @@ const ocr_text_span_t *find_ocr_text_span(const std::vector<ocr_text_span_t> &sp
     return nullptr;
 }
 
-size_t default_thread_count() {
-    const size_t count = std::thread::hardware_concurrency();
-    return count == 0 ? 1 : count;
-}
-
-size_t scan_block_count(const rect_t &range, bool split_by_y, size_t thread_count) {
-    const int span = split_by_y ? range.height() : range.width();
-    if (span <= 1 || thread_count <= 1)
-        return 1;
-    return thread_count < static_cast<size_t>(span) ? thread_count : static_cast<size_t>(span);
-}
-
 } // namespace
 
 // 这里的透明图沿用旧规则：四角同色时，把角点色当背景，只匹配剩下的前景点。
@@ -308,7 +296,7 @@ void extractConnectivity(const ImageBin &src, int threshold, std::vector<ImageBi
     }
 }
 
-ImageSearchAlgorithms::ImageSearchAlgorithms() : m_threadPool(default_thread_count()) {
+ImageSearchAlgorithms::ImageSearchAlgorithms() {
     _x1 = _y1 = 0;
     _dx = _dy = 0;
 }
@@ -763,6 +751,8 @@ long ImageSearchAlgorithms::FindPic(std::vector<PicMatchTemplate *> &pics, color
             continue;
         const int max_err_ct = static_cast<int>((pic->height * pic->width - use_ts_match) * (1.0 - sim));
         if (for_each_scan_point(matchRect, dir, [&](int j, int i) {
+                // dfcolor（调用方传入的 delta_color）只对透明模板有意义；非透明模板走灰度
+                // 相似度，参数会被忽略。这里保留历史语义，文档在 include/libop.h 标明。
                 int match_ret = (use_ts_match ? trans_match<false>(j, i, pic, dfcolor, match->transparent_points, max_err_ct)
                                               : real_match(j, i, &match->gray, match->gray_norm, sim));
                 if (match_ret) {
@@ -775,77 +765,6 @@ long ImageSearchAlgorithms::FindPic(std::vector<PicMatchTemplate *> &pics, color
             return static_cast<long>(pic_id);
         }
     }         // end for pics
-    return -1;
-}
-
-long ImageSearchAlgorithms::FindPicTh(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, long &x, long &y) {
-    std::vector<PicMatchTemplate> prepared;
-    std::vector<PicMatchTemplate *> views;
-    prepare_pic_views(pics, prepared, views);
-    return FindPicTh(views, dfcolor, sim, dir, x, y);
-}
-
-long ImageSearchAlgorithms::FindPicTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir,
-                                      long &x, long &y) {
-    x = y = -1;
-    prepare_gray_cache();
-    std::vector<rect_t> blocks;
-    // 将小循环放在最外面，提高处理速度
-    for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
-        auto match = pics[pic_id];
-        if (!match || !match->image)
-            continue;
-        auto pic = match->image;
-        const int use_ts_match = match->transparent_count;
-        auto pgimg = &match->gray;
-        rect_t matchRect(0, 0, _src.width, _src.height);
-        matchRect.shrinkRect(pic->width, pic->height);
-        if (!matchRect.valid())
-            continue;
-        const int max_err_ct = static_cast<int>((pic->height * pic->width - use_ts_match) * (1.0 - sim));
-        const bool split_by_y = matchRect.width() > matchRect.height();
-        const size_t block_count = scan_block_count(matchRect, split_by_y, m_threadPool.getThreadNum());
-        matchRect.divideBlock(static_cast<int>(block_count), split_by_y, blocks);
-        std::vector<std::future<point_t>> results;
-        results.reserve(blocks.size());
-        for (size_t i = 0; i < blocks.size(); ++i) {
-            results.push_back(m_threadPool.enqueue(
-                [this, dfcolor, dir, match, pgimg, matchRect, max_err_ct](rect_t block, Image *pic, int use_ts_match,
-                                                                          double sim) {
-                    point_t found(-1, -1);
-                    for_each_scan_point(block, dir, matchRect, [&](int j, int i) {
-                        int match_ret =
-                            (use_ts_match ? trans_match<false>(j, i, pic, dfcolor, match->transparent_points, max_err_ct)
-                                          : real_match(j, i, pgimg, match->gray_norm, sim));
-                        if (match_ret) {
-                            found = point_t(j + _x1 + _dx, i + _y1 + _dy);
-                            return true;
-                        }
-                        return false;
-                    });
-                    if (found.x != -1)
-                        return found;
-                    return point_t(-1, -1);
-                },
-                blocks[i], pic, use_ts_match, sim));
-            // results.push_back(r);
-        }
-        // wait all
-        point_t best(-1, -1);
-        rect_t globalMatchRect(matchRect.x1 + _x1 + _dx, matchRect.y1 + _y1 + _dy, matchRect.x2 + _x1 + _dx,
-                               matchRect.y2 + _y1 + _dy);
-        for (auto &&f : results) {
-            point_t p = f.get();
-            if (p.x != -1 && point_precedes_in_dir(p, best, dir, globalMatchRect))
-                best = p;
-        }
-        if (best.x != -1) {
-            x = best.x;
-            y = best.y;
-            return static_cast<long>(pic_id);
-        }
-
-    } // end for pics
     return -1;
 }
 
@@ -886,76 +805,6 @@ long ImageSearchAlgorithms::FindPicEx(std::vector<PicMatchTemplate *> &pics, col
             } // end for j
         }     // end for i
     }         // end for pics
-
-    rect_t resultRange(_x1 + _dx, _y1 + _dy, _x1 + _dx + _src.width, _y1 + _dy + _src.height);
-    return sort_and_limit_point_desc(vpd, dir, _max_return_obj_ct, resultRange);
-}
-
-long ImageSearchAlgorithms::FindPicExTh(std::vector<Image *> &pics, color_t dfcolor, double sim, long dir, vpoint_desc_t &vpd) {
-    std::vector<PicMatchTemplate> prepared;
-    std::vector<PicMatchTemplate *> views;
-    prepare_pic_views(pics, prepared, views);
-    return FindPicExTh(views, dfcolor, sim, dir, vpd);
-}
-
-long ImageSearchAlgorithms::FindPicExTh(std::vector<PicMatchTemplate *> &pics, color_t dfcolor, double sim, long dir,
-                                        vpoint_desc_t &vpd) {
-    vpd.clear();
-    prepare_gray_cache();
-    std::vector<rect_t> blocks;
-    // 将小循环放在最外面，提高处理速度
-    for (size_t pic_id = 0; pic_id < pics.size(); ++pic_id) {
-        auto match = pics[pic_id];
-        if (!match || !match->image)
-            continue;
-        auto pic = match->image;
-        const int use_ts_match = match->transparent_count;
-        auto pgimg = &match->gray;
-        rect_t matchRect(0, 0, _src.width, _src.height);
-        matchRect.shrinkRect(pic->width, pic->height);
-        if (!matchRect.valid())
-            continue;
-        const int max_err_ct = static_cast<int>((pic->height * pic->width - use_ts_match) * (1.0 - sim));
-        const bool split_by_y = matchRect.width() > matchRect.height();
-        const size_t block_count = scan_block_count(matchRect, split_by_y, m_threadPool.getThreadNum());
-        matchRect.divideBlock(static_cast<int>(block_count), split_by_y, blocks);
-        std::vector<std::future<vpoint_t>> results;
-        results.reserve(blocks.size());
-        for (size_t i = 0; i < blocks.size(); ++i) {
-            results.push_back(m_threadPool.enqueue(
-                [this, dfcolor, match, pgimg, max_err_ct](rect_t block, Image *pic, int use_ts_match,
-                                                          double sim) -> vpoint_t {
-                    vpoint_t vp;
-                    for (int i = block.y1; i < block.y2; ++i) {
-                        for (int j = block.x1; j < block.x2; ++j) {
-                            int match_ret =
-                                (use_ts_match
-                                     ? trans_match<false>(j, i, pic, dfcolor, match->transparent_points, max_err_ct)
-                                     : real_match(j, i, pgimg, match->gray_norm, sim));
-                            if (match_ret) {
-                                vp.push_back(point_t(j + _x1 + _dx, i + _y1 + _dy));
-                            }
-
-                        } // end for j
-                    }     // end for i
-                    return vp;
-                },
-                blocks[i], pic, use_ts_match, sim));
-            // results.push_back(r);
-        }
-        // wait all
-        for (auto &&f : results) {
-            vpoint_t vp = f.get();
-            if (vp.size() > 0) {
-                for (auto &p : vp) {
-                    point_desc_t pd = {static_cast<int>(pic_id), p};
-                    vpd.push_back(pd);
-                }
-
-                // return pic_id;
-            }
-        }
-    }
 
     rect_t resultRange(_x1 + _dx, _y1 + _dy, _x1 + _dx + _src.width, _y1 + _dy + _src.height);
     return sort_and_limit_point_desc(vpd, dir, _max_return_obj_ct, resultRange);

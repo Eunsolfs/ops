@@ -65,7 +65,11 @@ OP_C_API int OP_CALL OpSetPath(op_handle handle, const wchar_t *path);
 OP_C_API const wchar_t *OP_CALL OpGetPath(op_handle handle);
 OP_C_API const wchar_t *OP_CALL OpGetBasePath(op_handle handle);
 OP_C_API int OP_CALL OpGetID(op_handle handle);
+// 返回最近一次 Win32 错误码（::GetLastError 的值），不是库内分类错误码。
+// 因此失败时该值可能是 0 或上一次无关调用的残留；需要分类错误请等后续的错误信息 API。
 OP_C_API int OP_CALL OpGetLastError(op_handle handle);
+// 进程级日志/错误提示开关（所有句柄共享）：0=静默（默认），1=MessageBox，2=写 __op.log，
+// 3=stdout。默认值改为 0，避免无头宿主被模态框卡住；需要提示时显式设为 1。
 OP_C_API int OP_CALL OpSetShowErrorMsg(op_handle handle, int show_type);
 OP_C_API int OP_CALL OpSleep(op_handle handle, int millseconds);
 OP_C_API int OP_CALL OpInjectDll(op_handle handle, const wchar_t *process_name, const wchar_t *dll_name);
@@ -222,6 +226,11 @@ OP_C_API int OP_CALL OpFreePic(op_handle handle, const wchar_t *file_name);
 OP_C_API int OP_CALL OpLoadMemPic(op_handle handle, const wchar_t *file_name, void *data, int size);
 OP_C_API int OP_CALL OpGetPicSize(op_handle handle, const wchar_t *pic_name, int *width, int *height);
 OP_C_API uintptr_t OP_CALL OpGetScreenData(op_handle handle, int x1, int y1, int x2, int y2, int *ret);
+// 拷贝当前帧 BGRA 到调用方缓冲（推荐；GetScreenData 的指针只在下一次调用前有效）。
+// mode 与 OpSetScreenDataMode 一致：0=原序，1=上下翻转。返回 1=成功，0=失败，
+// -2=容量不足（此时 *needed 为所需字节数）。成功时 width/height/stride(=width*4) 有效。
+OP_C_API int OP_CALL OpCopyScreenData(op_handle handle, int x1, int y1, int x2, int y2, int mode, void *dst,
+                                      int dst_size, int *width, int *height, int *stride, int *needed);
 OP_C_API uintptr_t OP_CALL OpGetScreenDataBmp(op_handle handle, int x1, int y1, int x2, int y2, int *size,
                                               int *ret);
 OP_C_API void OP_CALL OpGetScreenFrameInfo(op_handle handle, int *frame_id, int *time);
