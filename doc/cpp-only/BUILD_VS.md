@@ -290,7 +290,9 @@ pwsh scripts/bench.ps1                          # 合成图性能基准（约 50
 - 本机 tlog 偶发被索引器/安全软件占用（`MSB6003 ... .tlog 正由另一进程使用`）时，加
   `-NoTrackFileAccess`（`verify.ps1` 默认已带）绕过；代价是该次增量构建失效。
 - Release 现在也产出 PDB（`/Zi + /DEBUG`）；发布时把 PDB 与 DLL 一起归档。
-- CI workflow 目前仍未恢复（`.github/workflows/` 为空）；`verify.ps1` 可作为流水线主体。
+- **GitHub Actions 已取消（2026-11-06）**：云端 runner 的 CMake 3.31 + VS17 组合会把 OpenCV 静态库装成
+  GNU 命名的 `lib*.a`（本地 CMake 4.4.3 正常），多轮兜底仍不可靠；按负责人要求不再使用云端构建/发包，
+  以本地 `scripts/verify.ps1`（四配置 + core 测试）作为门禁。
 
 ## 11. 打包分发（2026-11-05）
 

@@ -523,3 +523,12 @@ OpenCV   = 5.0.0
   新增 `Toolchain info` 步骤打印 cmake/VS 版本。
 - 验证：本机（VS17）脚本输出 `VsGen : Visual Studio 17 2022`，依赖已存在时正常跳过；
   传入不存在的生成器名时告警并回退；`ci.yml` 通过 YAML 解析。
+
+### 14:50 取消 GitHub Actions 云端构建
+
+- 云端 runner 的 CMake 3.31.6 + VS17 组合持续把 OpenCV 静态库安装成 GNU 命名（libopencv_core500.a），
+  本地 CMake 4.4.3 正常；已尝试固定生成器、PATH 过滤 MinGW/Strawberry、显式 .lib 命名、.a→.lib 兜底，
+  仍未稳定通过。
+- 按负责人要求：不再使用 GitHub 云端构建/发包，删除 `.github/workflows/ci.yml`；
+  本地门禁保持 `pwsh scripts/build.ps1` / `test.ps1` / `verify.ps1`（四配置 0 警告 + core 测试 + 合成基准）。
+- bootstrap 中与 CI 相关的兜底（PATH 过滤、.a→.lib 复制）保留，作为其它 Windows 机器的兼容处理，不影响本地。
