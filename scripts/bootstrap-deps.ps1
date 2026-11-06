@@ -218,7 +218,8 @@ New-Item -ItemType Directory -Force -Path $DepsRoot | Out-Null
 # 构建第三方库前把 MinGW/MSYS 从 PATH 移除；git 仍由 C:\Program Files\Git\cmd 提供。
 $savedPath = $env:PATH
 $env:PATH = (($env:PATH -split ';') | Where-Object {
-        $_ -and $_ -notmatch '(?i)\\mingw64(\\|$)' -and $_ -notmatch '(?i)\\msys64(\\|$)'
+        $_ -and $_ -notmatch '(?i)\\mingw64(\\|$)' -and $_ -notmatch '(?i)\\msys64(\\|$)' -and
+        $_ -notmatch '(?i)\\strawberry(\\|$)' -and $_ -notmatch '(?i)\\strawberryperl(\\|$)'
     }) -join ';'
 if ($env:PATH -ne $savedPath) {
     Write-Host "PATH     : 已移除 MinGW/MSYS 条目（避免 CMake 误用 GNU ar）" -ForegroundColor DarkGray
