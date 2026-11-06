@@ -57,7 +57,7 @@
 - **复现思路**：用 d00f837 的 `op.tlb` 生成 `#import` 客户端（或手工 `vtable[old_slot]`）调用 `[id(250)] WriteData`，替换为 HEAD 的 `op_x64.dll` 后调用，观察落在哪个方法上（x86 下参数个数不同的 stdcall 还会破坏栈）。
 - **影响**：任何早期绑定消费者在不重编译的情况下静默错调，最坏 AV；属于“删除 COM 中段方法但不换 IID”的经典陷阱。
 - **建议**：① 首选新 IID（`IOpAutomation2`）+ 新 coclass，旧的保留为退化 stub 返回 `E_NOTIMPL`/`DISP_E_MEMBERNOTFOUND`；② 退而求其次，至少 `version(2.0)` + 文档明确「仅 late binding 兼容，early binding 必须重编」；③ 加一条 COM 冒烟用例（`GetIDsOfNames("SetDict")` 应失败）。
-- **置信度**：高（vtable 布局由 IDL 顺序决定，删除位置与位移量已核实）。真实影响面取决于是否存在早期绑定消费者；Twinkle 侧走 C API（`external/OP/op-include/op_c_api.h`），我未发现 COM 消费者。
+- **置信度**：高（vtable 布局由 IDL 顺序决定，删除位置与位移量已核实）。真实影响面取决于是否存在早期绑定消费者；Twinkle 侧走 C API（现为 `external/ops/include/op_c_api.h`），我未发现 COM 消费者。
 - **工作区状态**：未修。
 
 ### A-02（P1）x86 C API 导出名带 stdcall 装饰，按名动态解析全部失效

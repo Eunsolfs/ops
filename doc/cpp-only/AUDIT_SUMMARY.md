@@ -109,5 +109,5 @@ cd Y:\sourcecode\cpp\Twinkle\external\ops
 .\bin\x86\Debug\op_test.exe --gtest_filter="UtilsTest.*:AlgorithmTest.*"
 ```
 
-> 若不想让 Release 构建写 Twinkle 的 `modules\Twinkle.Background\lib` / `external\OP\op-include`，
+> 若不想让 Release 构建写 Twinkle 的 `modules\Twinkle.Background\lib`，
 > 加 `/p:OpSyncTwinkle=false`。

@@ -58,9 +58,9 @@
 
 ### 3.2 Twinkle 的实际集成方式
 
-- Twinkle 只包含 `external/OP/op-include/op_c_api.h`，链接 `op_c_api_x64.lib`，运行期加载 `op_c_api_x64.dll`。
+- Twinkle 直接包含 `external/ops/include/op_c_api.h`，链接 `op_c_api_x64.lib`，运行期加载 `op_c_api_x64.dll`。
 - `op_c_api_x64.dll` 的导入表只有系统 DLL，**不依赖 `op_x64.dll` / `tools.dll`**（已用 dumpbin 验证）。
-- `op_x64.dll` 只在两类场景需要：COM 注册调用；Hook 截图时作为注入目标进程的载荷（`HookModule.h` / `HookCapture.cpp` 固定加载 `op_x64.dll`）。
+- `op_x64.dll` 只在 ops 自身的 COM 注册 / Hook 注入场景需要，Twinkle 不构建、不加载、不携带它。
 - Twinkle 使用 `OpCv*` 系列接口，因此 OpenCV 必须保留。
 
 ### 3.3 本机工具链（已核实）
@@ -132,7 +132,7 @@
 - `modules/Twinkle.Background/include/OPController.h`
 - `modules/Twinkle.Background/src/OPController.cpp`
 - 删除对被移除 `Op*` 符号的声明与实现；保留 HTTP OCR / FindStr / FindLine 封装。
-- 更新 Twinkle 使用的 `op_c_api.h` 来源（改为新仓库 `external/ops/include` 或同步覆盖 `external/OP/op-include`）。
+- Twinkle 已直接引用新仓库 `external/ops/include/op_c_api.h`；不再同步覆盖 `external/OP`。
 
 ## 5. 验证清单
 

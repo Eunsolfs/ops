@@ -47,30 +47,27 @@ Ocr / OcrEx / FindStr / FindStrEx / OcrAuto / OcrFromFile / OcrAutoFromFile / Fi
 external/ops/include/op_c_api.h
 external/ops/lib/x64/op_c_api_x64.lib
 external/ops/bin/x64/op_c_api_x64.dll
-external/ops/bin/x64/op_x64.dll
 ```
 
 同步到 Twinkle 使用的位置：
 
-> Release 构建 `op_c_api_x64` 的 PostBuild 已自动复制 DLL / 导入库 / `op_c_api.h`
-> （`/p:OpSyncTwinkle=false` 可关闭）。下面的手动命令仅在关闭自动同步或独立拷贝时使用。
+> Release 构建 `op_c_api_x64` 的 PostBuild 只自动复制 DLL / 导入库到
+> `modules\Twinkle.Background\lib`（`/p:OpSyncTwinkle=false` 可关闭）。
+> Twinkle 直接引用 `external/ops/include/op_c_api.h`，不再同步到 `external/OP`。
+> 下面的手动命令仅在关闭自动同步或独立拷贝时使用。
 
 ```powershell
-# 头文件（Twinkle 所有工程通过 external\OP\op-include 引用）
-Copy-Item external\ops\include\op_c_api.h external\OP\op-include\op_c_api.h -Force
-
 # 导入库 + DLL（Twinkle.Background 的工程引用目录）
 Copy-Item external\ops\lib\x64\op_c_api_x64.lib modules\Twinkle.Background\lib\ -Force
 Copy-Item external\ops\bin\x64\op_c_api_x64.dll  modules\Twinkle.Background\lib\ -Force
-Copy-Item external\ops\bin\x64\op_x64.dll        modules\Twinkle.Background\lib\ -Force
 ```
 
 然后重新构建 Twinkle（至少 `Twinkle.Background` + 任一链接 `op_c_api_x64.lib` 的 exe）。
 测试工程（`ColorSelfTest` / `PipelineTest` / `Bench` 等）的 PostBuild 会从
 `modules\Twinkle.Background\lib` 复制 DLL 到输出目录。
 
-> `modules\Twinkle.Background\lib` 与 `external\OP` 在 Twinkle 的 `.gitignore` 中，
-> 这些二进制/头文件不会进入 Twinkle 的 git 历史。
+> `modules\Twinkle.Background\lib` 在 Twinkle 的 `.gitignore` 中，
+> 这些二进制不会进入 Twinkle 的 git 历史。
 
 ## 4. x86 说明
 
@@ -79,8 +76,8 @@ x86 已完整配置并构建（`op.sln` 的 `Release|Win32`）：
 - 依赖：`pwsh -File scripts\bootstrap-deps.ps1 -Arch x86`
 - 产物：`bin\x86\op_x86.dll`、`op_c_api_x86.dll`、`tools.dll`、`cpp_call.exe`、
   `op_test.exe`；`lib\x86\libop.lib`、`op_c_api_x86.lib`
-- PostBuild 已把 x86 的 `op_x86.dll/.lib`、`op_c_api_x86.dll/.lib` 同步到
-  `modules\Twinkle.Background\lib`
+- `op_c_api_x64` 的 Win32 配置会把 `op_c_api_x86.dll/.lib` 同步到
+  `modules\Twinkle.Background\lib`（`op_x64` 不再同步）
 
 注意：Twinkle 主解决方案的 Win32 配置本身不完整（`build\Twinkle.sdk.props` 硬编码
 `op_c_api_x64.lib`，且很多工程 Win32→x64）。本次 x86 只在 `op.sln` 验证；在
