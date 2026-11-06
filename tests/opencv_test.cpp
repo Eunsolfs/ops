@@ -7,10 +7,13 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <functional>
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <sstream>
 #include <vector>
@@ -2954,6 +2957,98 @@ TEST(OpenCvBenchmark, DISABLED_MatchingHotPaths) {
                 opcv::MatchColorMode::Color);
         });
     ExpectNearRect(hard_auto_scale_match, cv::Rect(90, 450, 72, 72), 1);
+
+    opcv::RemoveAllTemplates();
+}
+
+// 同亮度下，灰度匹配无法区分“彩色按钮 / 灰色禁用按钮”，彩色匹配可以。
+// 这正是“找灰度那张图”的关键：必须用 MatchColorMode::Color，而不是 Gray。
+TEST(OpenCvTest, ColorModeDistinguishesGrayFromColored) {
+    opcv::RemoveAllTemplates();
+    using test_support::BuildBmp32TopDown;
+
+    const int width = 96;
+    const int height = 64;
+    std::vector<uchar> pixels(static_cast<size_t>(width) * height * 4, 0);
+    for (size_t i = 3; i < pixels.size(); i += 4)
+        pixels[i] = 0xff;
+
+    auto put = [&](int x, int y, uchar b, uchar g, uchar r) {
+        auto idx = static_cast<size_t>(y * width + x) * 4;
+        pixels[idx + 0] = b;
+        pixels[idx + 1] = g;
+        pixels[idx + 2] = r;
+        pixels[idx + 3] = 0xff;
+    };
+
+    // 同一亮度设计：灰色 (v,v,v) 与纯红 (0,0,c) 的 BGR2GRAY 都约等于 v。
+    auto gray_value = [](int delta) { return static_cast<int>(std::lround(40 + delta)); };
+    auto red_value = [](int delta) { return static_cast<int>(std::lround((40 + delta) / 0.299)); };
+
+    const int gray_x = 8, gray_y = 8, color_x = 56, color_y = 8, bw = 24, bh = 24;
+    for (int y = 0; y < bh; ++y) {
+        for (int x = 0; x < bw; ++x) {
+            const int delta = ((x / 4 + y / 4) % 3 - 1) * 6; // 块状纹理，避免常数模板
+            const int gv = gray_value(delta);
+            put(gray_x + x, gray_y + y, static_cast<uchar>(gv), static_cast<uchar>(gv), static_cast<uchar>(gv));
+            const int rv = std::min(255, red_value(delta));
+            put(color_x + x, color_y + y, 0, 0, static_cast<uchar>(rv));
+        }
+    }
+
+    auto save_patch = [&](int left, int top, const std::wstring &path) {
+        std::vector<uchar> patch(static_cast<size_t>(bw) * bh * 4);
+        for (int y = 0; y < bh; ++y) {
+            memcpy(patch.data() + static_cast<size_t>(y) * bw * 4,
+                   pixels.data() + (static_cast<size_t>(top + y) * width + left) * 4,
+                   static_cast<size_t>(bw) * 4);
+        }
+        auto bmp = BuildBmp32TopDown(bw, bh, patch);
+        std::ofstream out(path, std::ios::binary);
+        out.write(reinterpret_cast<const char *>(bmp.data()), static_cast<std::streamsize>(bmp.size()));
+    };
+
+    const std::wstring gray_path = test_support::GetTempBmpPath(L"op_gray_btn.bmp");
+    const std::wstring color_path = test_support::GetTempBmpPath(L"op_color_btn.bmp");
+    save_patch(gray_x, gray_y, gray_path);
+    save_patch(color_x, color_y, color_path);
+    ASSERT_TRUE(opcv::LoadTemplate(L"gray_btn", gray_path));
+    ASSERT_TRUE(opcv::LoadTemplate(L"color_btn", color_path));
+
+    opcv::ImageHandle source;
+    source.bytes = pixels;
+    source.width = width;
+    source.height = height;
+    source.channels = 4;
+    const opcv::Region full{0, 0, width, height};
+
+    // 灰度模式：彩色模板被转成灰度后与灰色模板等价，两个模板都会命中灰色按钮（(8,8)）。
+    opcv::MatchResult gray_of_gray;
+    opcv::MatchResult gray_of_color;
+    ASSERT_TRUE(opcv::MatchTemplate(source, L"gray_btn", full, 0.99, gray_of_gray, opcv::SearchDirection::LeftToRight,
+                                    opcv::StripMode::None, cv::TM_CCOEFF_NORMED, opcv::MatchColorMode::Gray));
+    ASSERT_TRUE(opcv::MatchTemplate(source, L"color_btn", full, 0.99, gray_of_color,
+                                    opcv::SearchDirection::LeftToRight, opcv::StripMode::None,
+                                    cv::TM_CCOEFF_NORMED, opcv::MatchColorMode::Gray));
+    EXPECT_EQ(gray_of_gray.x, gray_x);
+    EXPECT_EQ(gray_of_gray.y, gray_y);
+    // 关键：灰度模式分不出彩色模板，彩色按钮被当成灰色的命中。
+    EXPECT_EQ(gray_of_color.x, gray_x);
+    EXPECT_EQ(gray_of_color.y, gray_y);
+
+    // 彩色模式：灰色模板找灰色按钮，彩色模板找彩色按钮。
+    opcv::MatchResult color_of_gray;
+    opcv::MatchResult color_of_color;
+    ASSERT_TRUE(opcv::MatchTemplate(source, L"gray_btn", full, 0.99, color_of_gray,
+                                    opcv::SearchDirection::LeftToRight, opcv::StripMode::None,
+                                    cv::TM_CCOEFF_NORMED, opcv::MatchColorMode::Color));
+    ASSERT_TRUE(opcv::MatchTemplate(source, L"color_btn", full, 0.99, color_of_color,
+                                    opcv::SearchDirection::LeftToRight, opcv::StripMode::None,
+                                    cv::TM_CCOEFF_NORMED, opcv::MatchColorMode::Color));
+    EXPECT_EQ(color_of_gray.x, gray_x);
+    EXPECT_EQ(color_of_gray.y, gray_y);
+    EXPECT_EQ(color_of_color.x, color_x);
+    EXPECT_EQ(color_of_color.y, color_y);
 
     opcv::RemoveAllTemplates();
 }

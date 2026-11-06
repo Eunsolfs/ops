@@ -499,3 +499,16 @@ OpenCV   = 5.0.0
 - CI：x64 job 增加 `scripts/bench.ps1` 冒烟步骤（不设阈值）。
 - 验证：verify.ps1 四配置 0 error；x64 core 69 ran / 64 passed / 5 skipped；
   Win32 68 ran / 62 passed / 6 skipped；x86 bench 冒烟 PASS。
+
+## 2026-11-06
+
+### 08:10 彩色模板匹配验证（彩色/灰色按钮区分）
+
+- 新增 `OpenCvTest.ColorModeDistinguishesGrayFromColored`：合成“同亮度”的彩色按钮与灰色按钮
+  （灰 (v,v,v) vs 纯红 (0,0,c)，BGR2GRAY 后亮度一致）。
+  - Gray 模式：彩色模板被转灰后与灰色模板等价，两个模板都命中灰色按钮（假阳性）→ 证明灰度不可区分。
+  - Color 模式：灰色模板命中 (8,8)、彩色模板命中 (56,8)，正确区分。
+- 文档：`API_CHANGES.md §10`（彩色匹配用法、`color_mode=0`、method/score 语义、HSV 饱和度二次校验）、
+  `PERF_BASELINE.md §6`（用 OpenCV 替换 FindPic 的语义差异与两条落地路线）。
+- 结论：OpenCV 替换 FindPic **可行但不能 drop-in**；大模板/大 ROI 建议调用方改用 `OpCvMatch*`，
+  找“灰色禁用按钮”必须用彩色模式；直接替换会改变 sim/透明/delta_color/方向/返回下标语义。

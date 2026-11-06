@@ -326,3 +326,40 @@ OP_C_API int OP_CALL OpGetLastErrorCode(op_handle handle);
   的 `"000000"`（与真实黑色无法区分，Twinkle 的 `color.empty()` 判失败会误判）。
   正常成功时行为不变。
 - **CI**：新增 `.github/workflows/ci.yml`（x64/x86 矩阵构建 + core 测试 + 依赖缓存，另有 docs job）。
+
+## 10. 彩色模板匹配与“彩色/灰色按钮”区分（2026-11-06）
+
+结论：**灰度匹配无法区分同亮度下的彩色与灰色图**（灰度化丢弃色度信息，且部分彩色与灰色的
+BGR2GRAY 结果完全相等）；要“只找灰色那张”，必须用彩色模式匹配。
+
+已有能力（无需新 API）：
+
+```c
+// 1) 加载彩色模板（支持 mask）
+OpCvLoadTemplate(handle, L"btn_gray", L"res/gray_btn.png");
+OpCvLoadTemplate(handle, L"btn_color", L"res/color_btn.png");
+
+// 2) 彩色匹配：color_mode = 0 (Color)，1/省略 = Gray
+const wchar_t *json = OpCvMatchTemplate(handle, x, y, w, h, L"btn_gray",
+                                        0.95, dir, strip_mode, method, /*color_mode=*/0);
+
+// 3) 多模板/取最佳：OpCvMatchAnyTemplate / OpCvMatchAllTemplates 的 color_mode 同样传 0
+```
+
+语义说明：
+
+- `method` 直接映射 OpenCV `cv::TemplateMatchModes`（0=SQDIFF，1=SQDIFF_NORMED，2=CCORR，
+  3=CCORR_NORMED，4=CCOEFF，5=CCOEFF_NORMED）；`score` 已归一化为“越大越匹配”。
+- `color_mode=Color` 时内部转 3 通道 BGR 匹配（BGRA 先转 BGR），彩色差异会降低分数；
+  代价是 3 通道比灰度慢（约为 1.5–2×，视 ROI 而定）。
+- 若彩色/灰色按钮只有颜色不同、形状与亮度相同：
+  - Gray 模式：彩色模板转灰度后与灰色模板等价，会命中灰色按钮（假阳性）；
+  - Color 模式：灰色模板只命中灰色按钮，彩色模板只命中彩色按钮。
+- 回归用例：`OpenCvTest.ColorModeDistinguishesGrayFromColored`（合成同亮度彩色/灰色按钮，
+  断言 Gray 模式混淆、Color 模式正确区分）。
+
+建议调用方式（找“不可点击的灰色按钮”）：
+
+1. 为灰色态单独做一张模板（`btn_disabled.png`），`color_mode=0` 匹配；
+2. 或同时匹配彩色/灰色两张模板，取 `score` 更高者判断状态；
+3. 如需更强鲁棒性，可在彩色匹配后用饱和度（HSV `S`）二次校验：灰色按钮区域 S 明显更低。

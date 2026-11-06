@@ -71,3 +71,34 @@ pwsh scripts/bench.ps1                          # 结果打印并写入 build/be
 - 合成图不含透明/掩码模板、缩放、低对比度、重复纹理；这些场景需要真实素材后再补。
 - 只测了 x64 Release；x86 与 Debug 的绝对值不同但结论方向一致。
 - 基准本身 50s 左右，未加入默认 CI 门禁；可用 `pwsh scripts/bench.ps1` 手动跑或作为独立 job。
+
+## 6. 用 OpenCV 替换 `FindPic` 的可行性评估（2026-11-06）
+
+**结论：能替换，但不建议直接替换默认实现。** 建议按场景选择：
+
+### 6.1 不能 drop-in 的语义点
+
+| 语义点 | `FindPic`（现） | OpenCV 方案 | 处理方式 |
+| --- | --- | --- | --- |
+| 相似度 | `sim` 经 `0.5+sim/2` 映射成 SAD 比例 | `threshold` 是归一化相关/SQDIFF | 需重新标定；同一参数命中不同 |
+| 透明模板 | 四角同色 → 只比前景点 | `mask` 匹配 | 需把“四角启发式”换成显式 mask |
+| `delta_color` | 仅透明模板生效 | 无对应概念 | 需明确禁用或转成 mask |
+| 多模板 | `files` 以 `|` 分隔，返回模板下标 | `MatchAny/AllTemplates` 返回名字 | 返回语义要改 |
+| 方向 | `dir` 0–7 | `SearchDirection` 只有 4 向 | 需扩展或映射 |
+| 返回上限 | 1800 | 由调用方控制 | 调用方处理 |
+| 同帧缓存 | 灰度+积分图跨调用复用 | 每次 `cvtColor`（可自行缓存） | 可加灰度缓存 |
+
+### 6.2 两条落地路线
+
+- **路线 A（推荐，今天可用）**：调用方在“大模板/大 ROI”场景改用已有 `OpCvLoadTemplate` +
+  `OpCvMatchTemplate`（或 `OpCvMatchAnyTemplate`），保留 `FindPic` 处理小模板/兼容路径。
+  Twinkle 已封装 `CvMatchTemplate`，只需在调用处按模板尺寸或场景切换。
+- **路线 B（ops 内部改）**：新增 opt-in API（例如 `OpFindPicEx2(..., backend, color_mode, threshold)`），
+  内部走 OpenCV，`FindPic` 行为不变；需要补黄金用例锁命中点与阈值。
+- **不推荐 C**：直接把 `FindPic` 改成 OpenCV——会改变所有现有调用方的命中结果与失败语义，
+  且透明模板/`delta_color` 场景需要重做。
+
+### 6.3 彩色/灰色按钮的区分
+
+见 [API_CHANGES.md §10](API_CHANGES.md)：**必须用 `color_mode=Color`**；灰度模式下
+“同亮度彩色 vs 灰色”数学上不可区分（已用 `OpenCvTest.ColorModeDistinguishesGrayFromColored` 固化）。
