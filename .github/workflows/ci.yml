@@ -65,6 +65,20 @@ jobs:
             exit $code
           }
 
+      - name: Publish bootstrap log tail on failure
+        if: failure()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $log = "build/bootstrap-${{ matrix.arch }}.log"
+          if (-not (Test-Path $log)) { exit 0 }
+          $lines = @("### CI bootstrap failed (${{ matrix.arch }})", "")
+          $lines += Get-Content $log -Tail 80
+          $body = $lines -join [Environment]::NewLine
+          $payload = @{ body = $body } | ConvertTo-Json -Depth 3
+          $payload | Out-File -Encoding utf8 payload.json
+          gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" --input payload.json
       - name: Build Release ${{ matrix.platform }}
         shell: pwsh
         run: >
