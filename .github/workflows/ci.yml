@@ -55,7 +55,15 @@ jobs:
         run: |
           $vcpkg = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkg) { $vcpkg = "C:\vcpkg" }
-          pwsh -NoProfile -File scripts/bootstrap-deps.ps1 -Arch ${{ matrix.arch }} -VcpkgRoot $vcpkg -VsGenerator "Visual Studio 17 2022"
+          $log = "build/bootstrap-${{ matrix.arch }}.log"
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          pwsh -NoProfile -File scripts/bootstrap-deps.ps1 -Arch ${{ matrix.arch }} -VcpkgRoot $vcpkg -VsGenerator "Visual Studio 17 2022" 2>&1 | Tee-Object -FilePath $log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Write-Host "===== bootstrap log tail ====="
+            Get-Content $log -Tail 120
+            exit $code
+          }
 
       - name: Build Release ${{ matrix.platform }}
         shell: pwsh

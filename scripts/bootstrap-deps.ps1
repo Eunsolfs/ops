@@ -97,6 +97,20 @@ function Invoke-Checked([string]$FilePath, [string[]]$Arguments, [string]$WorkDi
 }
 
 # 在屏蔽 VCPKG_ROOT 的环境下执行脚本块，结束后恢复原值。
+# CMake 生成器配置：显式生成器失败时回退到 CMake 默认生成器（CI 镜像差异兜底）。
+function Invoke-CMakeConfigure([string[]]$BaseArgs, [string]$Label, [string]$BuildDir) {
+    if ($vsGenerator) {
+        try {
+            Invoke-Checked $cmake (@("-G", $vsGenerator) + $BaseArgs)
+            return
+        } catch {
+            Write-Warning "[$Label] 用生成器 '$vsGenerator' 配置失败，改用 CMake 默认生成器重试：$($_.Exception.Message)"
+            if (Test-Path $BuildDir) { Remove-Item -Recurse -Force $BuildDir }
+        }
+    }
+    Invoke-Checked $cmake $BaseArgs
+}
+
 function Invoke-WithoutVcpkg([scriptblock]$Action) {
     $savedVcpkgRoot = $env:VCPKG_ROOT
     Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
@@ -264,9 +278,8 @@ function Install-BlackBone([string]$TargetArch) {
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
         "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
     )
-    if ($vsGenerator) { $configureArgs = @("-G", $vsGenerator) + $configureArgs }
     Invoke-WithoutVcpkg {
-        Invoke-Checked $cmake $configureArgs
+        Invoke-CMakeConfigure $configureArgs "BlackBone($TargetArch)" $blackboneBuild
         Invoke-Checked $cmake (@(
             "--build", $blackboneBuild,
             "--config", "Release",
@@ -387,9 +400,8 @@ function Install-OpenCv([string]$TargetArch) {
         "-A", $platform,
         "-DCMAKE_INSTALL_PREFIX=$($paths.Install)"
     )
-    if ($vsGenerator) { $configureArgs = @("-G", $vsGenerator) + $configureArgs }
     Invoke-WithoutVcpkg {
-        Invoke-Checked $cmake ($configureArgs + $OpenCvCommonCMakeArgs)
+        Invoke-CMakeConfigure ($configureArgs + $OpenCvCommonCMakeArgs) "OpenCV($TargetArch)" $paths.Build
         Invoke-Checked $cmake (@(
                 "--build", $paths.Build,
                 "--config", "Release",
