@@ -332,6 +332,12 @@ function Find-OpenCvCoreLib([string]$InstallDir, [string]$TargetArch) {
 
 # OpenCV 的 CMake 选项：两种架构完全一致（BUILD_LIST 不含 dnn）。
 $OpenCvCommonCMakeArgs = @(
+    # CI 的 CMake/MSVC 组合偶尔把静态库后缀判定成 GNU 的 lib*.a（MSVC 链接器不认识）。
+    # 显式钉成 MSVC 命名，避免依赖平台自动判定。
+    "-DCMAKE_STATIC_LIBRARY_PREFIX=",
+    "-DCMAKE_STATIC_LIBRARY_SUFFIX=.lib",
+    "-DCMAKE_IMPORT_LIBRARY_PREFIX=",
+    "-DCMAKE_IMPORT_LIBRARY_SUFFIX=.lib",
     "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW",
     "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
     '-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>',
@@ -424,6 +430,11 @@ function Install-OpenCv([string]$TargetArch) {
     )
     Invoke-WithoutVcpkg {
         Invoke-CMakeConfigure ($configureArgs + $OpenCvCommonCMakeArgs) "OpenCV($TargetArch)" $paths.Build
+        $cacheFile = Join-Path $paths.Build "CMakeCache.txt"
+        if (Test-Path $cacheFile) {
+            Select-String -Path $cacheFile -Pattern "CMAKE_STATIC_LIBRARY_SUFFIX:|CMAKE_STATIC_LIBRARY_PREFIX:|CMAKE_CXX_COMPILER_ID:|CMAKE_ASM_COMPILER:" |
+                ForEach-Object { Write-Host "  cache: $($_.Line)" -ForegroundColor DarkGray }
+        }
         Invoke-Checked $cmake (@(
                 "--build", $paths.Build,
                 "--config", "Release",

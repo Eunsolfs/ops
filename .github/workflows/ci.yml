@@ -77,8 +77,11 @@ jobs:
         run: |
           $log = "build/bootstrap-${{ matrix.arch }}.log"
           if (-not (Test-Path $log)) { exit 0 }
-          $lines = @("### CI bootstrap failed (${{ matrix.arch }})", "")
-          $lines += Get-Content $log -Tail 80
+          $all = Get-Content $log
+          $lines = @("### CI bootstrap failed (${{ matrix.arch }})", "", "#### head (40)", "")
+          $lines += $all | Select-Object -First 40
+          $lines += @("", "#### tail (120)", "")
+          $lines += $all | Select-Object -Last 120
           $body = $lines -join [Environment]::NewLine
           $payload = @{ body = $body } | ConvertTo-Json -Depth 3
           $payload | Out-File -Encoding utf8 payload.json
