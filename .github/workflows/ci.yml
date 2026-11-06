@@ -80,6 +80,10 @@ jobs:
           $all = Get-Content $log
           $lines = @("### CI bootstrap failed (${{ matrix.arch }})", "", "#### head (40)", "")
           $lines += $all | Select-Object -First 40
+          $lines += @("", "#### key lines", "")
+          $keys = $all | Select-String -Pattern "cache:|清理旧构建|compiler identification|CMake generator|CMAKE_AR|CMAKE_STATIC|OpenCV .*静态库|PATH     :" |
+              Select-Object -First 40
+          $lines += $keys | ForEach-Object { $_.Line }
           $lines += @("", "#### tail (120)", "")
           $lines += $all | Select-Object -Last 120
           $body = $lines -join [Environment]::NewLine
