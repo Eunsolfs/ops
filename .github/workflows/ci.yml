@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [master, main, slim/cpp-only-vs]
@@ -67,6 +70,7 @@ jobs:
 
       - name: Publish bootstrap log tail on failure
         if: failure()
+        continue-on-error: true
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

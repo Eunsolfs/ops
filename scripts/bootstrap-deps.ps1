@@ -213,6 +213,17 @@ Write-Host "Arch     : $Arch -> $($archs -join ', ')"
 
 New-Item -ItemType Directory -Force -Path $DepsRoot | Out-Null
 
+# CI 镜像的 PATH 里可能带 C:\mingw64（给其它工具链用）。CMake/OpenCV 会把它当成
+# ASM 编译器/ar，产出 lib*.a（MSVC 链接器不认识），表现为 install 目录只有 .a。
+# 构建第三方库前把 MinGW/MSYS 从 PATH 移除；git 仍由 C:\Program Files\Git\cmd 提供。
+$savedPath = $env:PATH
+$env:PATH = (($env:PATH -split ';') | Where-Object {
+        $_ -and $_ -notmatch '(?i)\\mingw64(\\|$)' -and $_ -notmatch '(?i)\\msys64(\\|$)'
+    }) -join ';'
+if ($env:PATH -ne $savedPath) {
+    Write-Host "PATH     : 已移除 MinGW/MSYS 条目（避免 CMake 误用 GNU ar）" -ForegroundColor DarkGray
+}
+
 # ---------------------------------------------------------------------------
 # 2. vcpkg 静态包
 # ---------------------------------------------------------------------------
@@ -376,6 +387,17 @@ function Install-OpenCv([string]$TargetArch) {
 
     Write-Step "OpenCV ${OpenCvVersion} ($TargetArch): 下载/构建静态库（耗时较长，约 10-30 分钟）"
 
+    # 缓存/上次失败可能留下被 MinGW 污染的 build 目录（CMakeCache 里 CMAKE_AR 指向 GNU ar，
+    # 只产出 lib*.a）。找不到 .lib 时清掉 build/install 再全新配置，避免继续复用坏缓存。
+    if (-not $coreLib) {
+        foreach ($stale in @($paths.Build, $paths.Install)) {
+            if (Test-Path $stale) {
+                Write-Host "  清理旧构建目录：$stale" -ForegroundColor DarkGray
+                Remove-Item -Recurse -Force $stale
+            }
+        }
+    }
+
     if (-not (Test-Path (Join-Path $paths.Source "CMakeLists.txt"))) {
         New-Item -ItemType Directory -Force -Path $paths.Root | Out-Null
         $zipPath = Join-Path $paths.Root "opencv-$OpenCvVersion.zip"
@@ -412,7 +434,7 @@ function Install-OpenCv([string]$TargetArch) {
 
     $coreLib = Find-OpenCvCoreLib $paths.Install $TargetArch
     if (-not $coreLib) {
-        throw "OpenCV ($TargetArch) 构建完成但未找到 opencv_core$OpenCvLibSuffix.lib（$($paths.Install)）"
+        throw "OpenCV ($TargetArch) 构建完成但未找到 opencv_core$OpenCvLibSuffix.lib（$($paths.Install)）。若目录里只有 lib*.a，说明 CMake 误用了 MinGW 的 ar/ASM 工具，请从 PATH 移除 MinGW/MSYS 后重建。"
     }
     Write-Host "  OpenCV install: $($paths.Install)" -ForegroundColor Green
     Write-Host "  $coreLib" -ForegroundColor Green
