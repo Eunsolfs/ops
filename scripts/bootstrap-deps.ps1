@@ -446,7 +446,25 @@ function Install-OpenCv([string]$TargetArch) {
 
     $coreLib = Find-OpenCvCoreLib $paths.Install $TargetArch
     if (-not $coreLib) {
-        throw "OpenCV ($TargetArch) 构建完成但未找到 opencv_core$OpenCvLibSuffix.lib（$($paths.Install)）。若目录里只有 lib*.a，说明 CMake 误用了 MinGW 的 ar/ASM 工具，请从 PATH 移除 MinGW/MSYS 后重建。"
+        # 某些 CMake/MSVC 组合（CI 上复现，本地正常）会把静态库装成 GNU 命名
+        # libopencv_core500.a；VS 生成器的产物内容仍是 MSVC COFF 归档，
+        # 这里按 MSVC 命名复制一份 .lib，避免整条流水线被命名卡住。
+        $gnuArchives = Get-ChildItem -Path $paths.Install -Recurse -Filter *.a -ErrorAction SilentlyContinue
+        if ($gnuArchives) {
+            foreach ($archive in $gnuArchives) {
+                $name = $archive.BaseName
+                if ($name.StartsWith("lib")) { $name = $name.Substring(3) }
+                $target = Join-Path $archive.DirectoryName "$name.lib"
+                if (-not (Test-Path $target)) {
+                    Copy-Item -LiteralPath $archive.FullName -Destination $target -Force
+                }
+            }
+            Write-Host "  已将 $(@($gnuArchives).Count) 个 lib*.a 复制为 *.lib（VS 生成器产物）" -ForegroundColor Yellow
+            $coreLib = Find-OpenCvCoreLib $paths.Install $TargetArch
+        }
+    }
+    if (-not $coreLib) {
+        throw "OpenCV ($TargetArch) 构建完成但未找到 opencv_core500.lib或可转换的 .a（$($paths.Install)）"
     }
     Write-Host "  OpenCV install: $($paths.Install)" -ForegroundColor Green
     Write-Host "  $coreLib" -ForegroundColor Green
