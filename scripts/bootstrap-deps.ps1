@@ -34,6 +34,10 @@
 .PARAMETER SkipOpenCv
     跳过 OpenCV（若只需要编译不依赖 Cv* 的目标）。
 
+.PARAMETER VsGenerator
+    CMake 的 Visual Studio 生成器名（如 "Visual Studio 17 2022"）。默认自动检测：
+    VS2022 -> Visual Studio 17 2022，VS2026 -> Visual Studio 18 2026；也可用环境变量 OP_VS_GENERATOR 覆盖。
+
 .EXAMPLE
     pwsh -File scripts\bootstrap-deps.ps1
 
@@ -49,7 +53,8 @@ param(
     [string]$VcpkgRoot = "",
     [string]$DepsDir = "build\_deps",
     [switch]$Force,
-    [switch]$SkipOpenCv
+    [switch]$SkipOpenCv,
+    [string]$VsGenerator = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -143,6 +148,40 @@ function Get-VcpkgTriplet([string]$TargetArch) {
 # ---------------------------------------------------------------------------
 $cmake = Require-Command "cmake"
 $git = Require-Command "git"
+# 解析 VS 生成器：本机/CI 可能装 VS2022（17）或 VS2026（18），不能写死。
+# 优先级：-VsGenerator > $env:OP_VS_GENERATOR > vswhere 检测 > 留空（交给 CMake 默认生成器）。
+function Resolve-VsGenerator([string]$Override) {
+    if ($Override) { return $Override }
+    if ($env:OP_VS_GENERATOR) { return $env:OP_VS_GENERATOR }
+
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path -LiteralPath $vswhere) {
+        $version = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -property installationVersion 2>$null
+        if ($version) {
+            $major = 0
+            [void][int]::TryParse(($version -split '\.')[0], [ref]$major)
+            switch ($major) {
+                17 { return "Visual Studio 17 2022" }
+                18 { return "Visual Studio 18 2026" }
+            }
+        }
+    }
+    return ""
+}
+
+$vsGenerator = Resolve-VsGenerator $VsGenerator
+if ($vsGenerator) {
+    $cmakeHelp = (& $cmake --help 2>&1 | Out-String)
+    if ($cmakeHelp -notmatch [regex]::Escape($vsGenerator)) {
+        Write-Warning "CMake 不支持生成器 '$vsGenerator'，回退到默认生成器。"
+        $vsGenerator = ""
+    }
+}
+if ($vsGenerator) {
+    Write-Host "VsGen    : $vsGenerator"
+} else {
+    Write-Host "VsGen    : <default>（未检测到已知 VS 生成器，交给 CMake 选择）"
+}
 $vcpkg = Resolve-VcpkgRoot
 $vcpkgExe = Join-Path $vcpkg "vcpkg.exe"
 
@@ -217,16 +256,17 @@ function Install-BlackBone([string]$TargetArch) {
 
     $blackboneBuild = Join-Path $blackboneRoot "build\$tag"
     $platform = Get-ArchPlatform $TargetArch
+    $configureArgs = @(
+        "-S", (Join-Path $blackboneRoot "src"),
+        "-B", $blackboneBuild,
+        "-A", $platform,
+        "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW",
+        "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
+        "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
+    )
+    if ($vsGenerator) { $configureArgs = @("-G", $vsGenerator) + $configureArgs }
     Invoke-WithoutVcpkg {
-        Invoke-Checked $cmake @(
-            "-S", (Join-Path $blackboneRoot "src"),
-            "-B", $blackboneBuild,
-            "-G", "Visual Studio 17 2022",
-            "-A", $platform,
-            "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW",
-            "-DCMAKE_POLICY_VERSION_MINIMUM=3.5",
-            "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
-        )
+        Invoke-Checked $cmake $configureArgs
         Invoke-Checked $cmake (@(
             "--build", $blackboneBuild,
             "--config", "Release",
@@ -341,14 +381,15 @@ function Install-OpenCv([string]$TargetArch) {
     $platform = Get-ArchPlatform $TargetArch
 
     # 关键：构建 OpenCV 时必须屏蔽全局 vcpkg 集成，避免误用 vcpkg 的 OpenCV4/protobuf 头。
+    $configureArgs = @(
+        "-S", $paths.Source,
+        "-B", $paths.Build,
+        "-A", $platform,
+        "-DCMAKE_INSTALL_PREFIX=$($paths.Install)"
+    )
+    if ($vsGenerator) { $configureArgs = @("-G", $vsGenerator) + $configureArgs }
     Invoke-WithoutVcpkg {
-        Invoke-Checked $cmake (@(
-                "-S", $paths.Source,
-                "-B", $paths.Build,
-                "-G", "Visual Studio 17 2022",
-                "-A", $platform,
-                "-DCMAKE_INSTALL_PREFIX=$($paths.Install)"
-            ) + $OpenCvCommonCMakeArgs)
+        Invoke-Checked $cmake ($configureArgs + $OpenCvCommonCMakeArgs)
         Invoke-Checked $cmake (@(
                 "--build", $paths.Build,
                 "--config", "Release",

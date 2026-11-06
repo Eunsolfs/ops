@@ -12,7 +12,10 @@ concurrency:
 
 jobs:
   build-test:
-    runs-on: windows-latest
+    # 固定 windows-2022：工程使用 VS2022/v143 工具集与 CMake 的 VS17 生成器。
+    # windows-latest 已是 VS2026（CMake 生成器 "Visual Studio 18 2026"）；
+    # 需要时用 -VsGenerator 或 OP_VS_GENERATOR 覆盖 bootstrap-deps.ps1 的自动检测。
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
@@ -36,12 +39,18 @@ jobs:
           restore-keys: |
             op-deps-${{ runner.os }}-${{ matrix.arch }}-
 
+      - name: Toolchain info
+        shell: pwsh
+        run: |
+          cmake --version
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationVersion
+
       - name: Bootstrap dependencies (${{ matrix.arch }})
         shell: pwsh
         run: |
           $vcpkg = $env:VCPKG_INSTALLATION_ROOT
           if (-not $vcpkg) { $vcpkg = "C:\vcpkg" }
-          pwsh -NoProfile -File scripts/bootstrap-deps.ps1 -Arch ${{ matrix.arch }} -VcpkgRoot $vcpkg
+          pwsh -NoProfile -File scripts/bootstrap-deps.ps1 -Arch ${{ matrix.arch }} -VcpkgRoot $vcpkg -VsGenerator "Visual Studio 17 2022"
 
       - name: Build Release ${{ matrix.platform }}
         shell: pwsh

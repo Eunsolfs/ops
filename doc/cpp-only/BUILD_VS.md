@@ -307,3 +307,15 @@ pwsh scripts/package.ps1 -Arch x64 -Build
 
 版本号从 `include/op_version.h` 读取，与 `OpVer()`、资源版本保持一致；
 第三方许可清单见仓库根 `THIRD_PARTY_NOTICES.md`（OpenCV Apache-2.0、BlackBone/MinHook/kiero 等）。
+
+## 11. VS 生成器自动检测（2026-11-06）
+
+`scripts/bootstrap-deps.ps1` 不再写死 `-G "Visual Studio 17 2022"`：本机/CI 可能装 VS2022（17）
+或 VS2026（18），写死会导致 `CMake Error ... could not find any instance of Visual Studio`。
+
+- 优先级：`-VsGenerator "<name>"` > 环境变量 `OP_VS_GENERATOR` > `vswhere` 检测
+  （VS17→`Visual Studio 17 2022`，VS18→`Visual Studio 18 2026`）。
+- 若当前 CMake 不认识该生成器名，脚本会告警并省略 `-G`，交给 CMake 默认生成器（`-A x64/Win32` 仍生效）。
+- CI 的 `build-test` job 固定 `windows-2022` 并显式传 `-VsGenerator "Visual Studio 17 2022"`；
+  `windows-latest` 已是 VS2026，与工程的 v143 工具集不匹配。
+- 排障：workflow 里新增 `Toolchain info` 步骤，打印 `cmake --version` 与 `vswhere` 的 VS 版本。

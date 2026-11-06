@@ -512,3 +512,14 @@ OpenCV   = 5.0.0
   `PERF_BASELINE.md §6`（用 OpenCV 替换 FindPic 的语义差异与两条落地路线）。
 - 结论：OpenCV 替换 FindPic **可行但不能 drop-in**；大模板/大 ROI 建议调用方改用 `OpCvMatch*`，
   找“灰色禁用按钮”必须用彩色模式；直接替换会改变 sim/透明/delta_color/方向/返回下标语义。
+
+### 13:20 修复 CI：VS 生成器写死导致 windows-latest 失败
+
+- 现象：GitHub Actions `windows-latest`（已升级到 VS2026/CMake 18）上，`bootstrap-deps.ps1`
+  里写死的 `-G "Visual Studio 17 2022"` 报 `could not find any instance of Visual Studio`。
+- 修复：`bootstrap-deps.ps1` 增加 `-VsGenerator` 参数与自动检测（vswhere：VS17→`Visual Studio 17 2022`，
+  VS18→`Visual Studio 18 2026`，可用 `OP_VS_GENERATOR` 覆盖）；CMake 不认识生成器时告警并回退默认生成器。
+- CI：`build-test` 固定 `windows-2022`（v143 工具集）并显式传 `-VsGenerator "Visual Studio 17 2022"`；
+  新增 `Toolchain info` 步骤打印 cmake/VS 版本。
+- 验证：本机（VS17）脚本输出 `VsGen : Visual Studio 17 2022`，依赖已存在时正常跳过；
+  传入不存在的生成器名时告警并回退；`ci.yml` 通过 YAML 解析。
